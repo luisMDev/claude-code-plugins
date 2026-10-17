@@ -26,6 +26,7 @@ export const register: Register = on => {
           ...(i > 0 ? [<Text key={`sep-${b.key}`} dimColor> · </Text>] : []),
           <Button
             key={b.key}
+            plain
             onPress={() => $.prompt.submit({ text: prompt(b.key), asUser: true })}
           >
             <Text color={PILL_BG}>{'\ue0b6'}</Text>
