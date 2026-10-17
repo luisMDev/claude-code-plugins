@@ -1,9 +1,9 @@
 import type { Register } from 'claude-code'
 
 const BUTTONS = [
-  { key: 'how', label: 'How' },
-  { key: 'why', label: 'Why' },
-  { key: 'teach', label: 'Teach' },
+  { key: 'how', label: 'How', color: 'suggestion' },
+  { key: 'why', label: 'Why', color: 'warning' },
+  { key: 'teach', label: 'Teach', color: 'success' },
 ] as const
 
 export const prompt = (skill: string) =>
@@ -15,17 +15,19 @@ export const register: Register = on => {
       return next(e)
     }
 
-    const { Box, Button } = $.ui.resolve(e)
+    const { Box, Button, Text } = $.ui.resolve(e)
 
     return (
       <Box>
-        {BUTTONS.map(b => (
+        {BUTTONS.flatMap((b, i) => [
+          ...(i > 0 ? [<Text key={`sep-${b.key}`} dimColor> · </Text>] : []),
           <Button
             key={b.key}
-            label={b.label}
             onPress={() => $.prompt.submit({ text: prompt(b.key), asUser: true })}
-          />
-        ))}
+          >
+            <Text color={b.color} bold>{b.label}</Text>
+          </Button>,
+        ])}
       </Box>
     )
   })
