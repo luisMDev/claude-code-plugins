@@ -38,6 +38,13 @@ const title = 'claude-code-plugins'
 
     <main>
       <header class="hero">
+        <div class="stage" data-hero>
+          <nav class="pick" aria-label="Header option">
+            <a href="?hero=plug" data-pick="plug">PLUG</a>
+            <a href="?hero=led" data-pick="led">LED</a>
+            <a href="?hero=term" data-pick="term">TERM</a>
+          </nav>
+        </div>
         <h1 aria-label={title}>
           <span aria-hidden="true"><span data-type="75">{title}</span><span class="cursor"></span></span>
           <span class="rule" aria-hidden="true">{underline(title, '=')}</span>
@@ -139,6 +146,19 @@ const title = 'claude-code-plugins'
     <script>
       import '../scripts/terminal-fx'
 
+      // Three header options while we choose one: ?hero=plug|led|term.
+      const heroes = {
+        plug: () => import('../scripts/heroes/plug'),
+        led: () => import('../scripts/heroes/led'),
+        term: () => import('../scripts/heroes/term'),
+      }
+      const host = document.querySelector<HTMLElement>('[data-hero]')
+      const asked = new URLSearchParams(location.search).get('hero')
+      const choice = asked && asked in heroes ? (asked as keyof typeof heroes) : 'plug'
+      document.querySelector(`[data-pick="${choice}"]`)?.setAttribute('aria-current', 'true')
+      document.documentElement.dataset.heroChoice = choice
+      if (host) void heroes[choice]().then((m) => m.mount(host))
+
       for (const button of document.querySelectorAll<HTMLButtonElement>('[data-copy]')) {
         button.addEventListener('click', async () => {
           await navigator.clipboard.writeText(button.dataset.copy ?? '')
@@ -185,6 +205,7 @@ const title = 'claude-code-plugins'
   }
   body {
     margin: 0;
+    overflow-x: clip;
     background: var(--bg);
     color: var(--ink);
     font: 15px/1.65 'Geist Mono', ui-monospace, monospace;
@@ -225,7 +246,57 @@ const title = 'claude-code-plugins'
     color: var(--accent);
   }
   .hero {
-    padding-block: 64px 48px;
+    padding-block: 0 48px;
+  }
+  .stage {
+    position: relative;
+    left: 50%;
+    width: 100vw;
+    margin-left: -50vw;
+    height: clamp(300px, 52vh, 480px);
+    margin-bottom: 8px;
+    cursor: crosshair;
+    overflow: hidden;
+  }
+  .stage :global(canvas) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .stage :global(.hero-msg) {
+    position: absolute;
+    left: 50%;
+    bottom: 12px;
+    transform: translateX(-50%);
+    margin: 0;
+    font-size: 14px;
+    color: var(--accent);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .pick {
+    position: absolute;
+    top: 8px;
+    right: 16px;
+    z-index: 1;
+    display: flex;
+    gap: 4px;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    font-size: 11px;
+  }
+  .pick a {
+    padding: 3px 8px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--muted);
+    background: var(--bg);
+  }
+  .pick a[aria-current] {
+    color: var(--bg);
+    background: var(--ink);
+    border-color: var(--ink);
   }
   h1 {
     font-size: clamp(28px, 7vw, 52px);
@@ -246,6 +317,14 @@ const title = 'claude-code-plugins'
     font-size: inherit;
     letter-spacing: 0;
     line-height: 0.6;
+  }
+  /* The LED header already spells the name; keep the heading for screen readers only. */
+  :global([data-hero-choice='led']) h1 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
   }
   .lead {
     max-width: 60ch;
