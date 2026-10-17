@@ -4,7 +4,7 @@ LuismDev's Claude Code plugins, published as one marketplace.
 
 | Plugin | What it does |
 | -- | -- |
-| [`how-why-teach`](plugins/how-why-teach) | A band above the prompt with three buttons. **How** explains how the current work is done, **Why** explains why it is done this way (pros, cons, alternatives, how to do it better), **Teach** walks you through it like a teacher. Each button asks Claude to use the matching skill (`how-why-teach:how`, `:why`, `:teach`), which you can also invoke by name. |
+| [`how-why-teach`](plugins/how-why-teach) | A band above the prompt with three buttons. **How** explains how the current work is done, **Why** explains why it is done this way (pros, cons, alternatives, how to do it better), **Teach** walks you through it like a teacher. Each button opens a side pane and answers there from a fork of the session (`$.model.fork`), with the matching skill's instructions as the question, so the main thread gets no extra turns. The skills (`how-why-teach:how`, `:why`, `:teach`) can also be invoked by name. |
 
 ## Install
 

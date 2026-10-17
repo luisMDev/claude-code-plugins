@@ -1,8 +1,9 @@
 {
   "name": "how-why-teach",
-  "version": "0.1.1",
-  "description": "A band above the prompt with How, Why and Teach buttons, each asking Claude to explain the current session through its own skill.",
+  "version": "0.2.0",
+  "description": "A band above the prompt with How, Why and Teach buttons; each answers in a side pane from a fork of the session, leaving the main thread untouched.",
   "author": {
     "name": "LuismDev"
-  }
+  },
+  "types": "./types/index.d.ts"
 }
