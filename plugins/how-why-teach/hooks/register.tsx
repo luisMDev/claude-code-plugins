@@ -3,10 +3,12 @@ import type { ElementConstructor, EngineInterface, Register, TextProps } from 'c
 
 import type { Answer } from '../types'
 
+import { ARTIFACT_DIR, BODY_SYSTEM, page, stripFences } from './artifact'
+
 const BUTTONS = [
-  { key: 'how', label: 'How', color: '#87afaf', subtitle: "How it's done" },
-  { key: 'why', label: 'Why', color: '#ffaf00', subtitle: 'Why this way' },
-  { key: 'teach', label: 'Teach', color: '#afaf00', subtitle: 'Lesson' },
+  { key: 'how', label: 'How', color: '#87afaf', subtitle: "How it's done", page: 'How it works' },
+  { key: 'why', label: 'Why', color: '#ffaf00', subtitle: 'Why this way', page: 'Why this way' },
+  { key: 'teach', label: 'Teach', color: '#afaf00', subtitle: 'Lesson', page: 'Session lesson' },
 ] as const
 
 // The status line's capsule: rounded caps (Nerd Font) around a filled body.
@@ -47,6 +49,53 @@ async function ask($: EngineInterface, mode: Answer['mode'], title: string) {
   }
 }
 
+// Keeps the pages out of git without touching the project's .gitignore.
+async function excludeFromGit($: EngineInterface) {
+  const exclude = '.git/info/exclude'
+  if (!(await $.fs.exists(exclude))) {
+    return
+  }
+  const text = await $.fs.read(exclude)
+  if (!text.includes(ARTIFACT_DIR)) {
+    await $.fs.write(exclude, `${text.trimEnd()}\n${ARTIFACT_DIR}/\n`)
+  }
+}
+
+// Lays the answer out as a page, writes it to the working directory and
+// publishes it with the Artifact tool, which asks the person first.
+async function publish($: EngineInterface, shown: Answer) {
+  const run = latest
+  const mode = BUTTONS.find(b => b.key === shown.mode)!
+  const set = (artifact: Answer['artifact']) =>
+    update($, answer, now => (run === latest && now !== null ? { ...now, artifact } : now))
+  await set({ status: 'publishing', text: '' })
+
+  try {
+    const body = await $.model.complete({ model: 'sonnet', system: BODY_SYSTEM, prompt: shown.text, maxTokens: 16000 })
+    if (!body.isAnswered) {
+      await set({ status: 'error', text: `No page: ${body.reason}` })
+      return
+    }
+    const path = `${ARTIFACT_DIR}/${mode.key}-${await $.clock.now()}.html`
+    await excludeFromGit($)
+    await $.fs.write(path, page(mode.page, mode.color, stripFences(body.text)))
+    const published = await $.tool.call({
+      tool: 'Artifact',
+      file_path: path,
+      icon: 'book',
+      description: `${mode.page}: an explanation of a Claude Code session.`,
+    })
+    const url = (published.text ?? JSON.stringify(published.result ?? '')).match(/https:\/\/claude\.ai\/[^\s)"'`]+/)?.[0]
+    await set(
+      published.deny !== undefined || published.isError || url === undefined
+        ? { status: 'error', text: published.deny ?? published.text ?? 'Not published.' }
+        : { status: 'done', text: url },
+    )
+  } catch (error) {
+    await set({ status: 'error', text: String(error) })
+  }
+}
+
 function capsule(Text: ElementConstructor<TextProps>, label: string, color: string) {
   return [
     <Text color={PILL_BG}>{''}</Text>,
@@ -78,7 +127,7 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Button, Markdown, Text } = $.ui.resolve(e)
+    const { Box, Button, Link, Markdown, Text } = $.ui.resolve(e)
     const shown = await read($, answer)
     const mode = BUTTONS.find(b => b.key === shown?.mode)
     const rule = <Text dimColor>{'─'.repeat(Math.max(8, e.props.bodyColumns - 4))}</Text>
@@ -115,7 +164,15 @@ export const register: Register = on => {
           </Box>
         )}
         {rule}
-        <Box columnGap={2}>
+        {shown.artifact?.status === 'publishing' && <Text color={mode.color}>◆ Publishing the artifact…</Text>}
+        {shown.artifact?.status === 'error' && <Text color="error">✗ {shown.artifact.text}</Text>}
+        {shown.artifact?.status === 'done' && (
+          <Box columnGap={1}>
+            <Text color={mode.color}>◆</Text>
+            <Link key="artifact-url" href={shown.artifact.text} label={shown.artifact.text} />
+          </Box>
+        )}
+        <Box columnGap={2} flexWrap="wrap">
           {shown.status !== 'loading' && (
             <Button key="again" plain onPress={() => ask($, mode.key, mode.label)}>
               {capsule(Text, '↻ Again', PILL_FG)}
@@ -124,6 +181,16 @@ export const register: Register = on => {
           {shown.status === 'done' && (
             <Button key="copy" plain onPress={p => $.ui.copy({ text: shown.text, surface: p.surface })}>
               {capsule(Text, '⧉ Copy', PILL_FG)}
+            </Button>
+          )}
+          {shown.status === 'done' && shown.artifact?.status !== 'publishing' && shown.artifact?.status !== 'done' && (
+            <Button key="artifact" plain onPress={() => publish($, shown)}>
+              {capsule(Text, '◆ Artifact', PILL_FG)}
+            </Button>
+          )}
+          {shown.artifact?.status === 'done' && (
+            <Button key="open" plain onPress={() => $.tool.call({ tool: 'Artifact', action: 'open', url: shown.artifact!.text })}>
+              {capsule(Text, '↗ Open', PILL_FG)}
             </Button>
           )}
           <Button key="close" plain onPress={() => $.ui.close({ id: PANE })}>

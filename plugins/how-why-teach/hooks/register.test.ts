@@ -67,7 +67,7 @@ test('a button answers in the pane from a fork of the session, never through a p
   const pane = await $.ui.mount(PANE_TARGET)
   expect((await pane.find({ key: 'answer' }))?.text).toContain('how')
   expect(await pane.find({ type: 'Text', text: '4s' })).toBeDefined()
-  expect((await pane.findAll({ type: 'Button' })).map(b => b.key)).toEqual(['again', 'copy', 'close'])
+  expect((await pane.findAll({ type: 'Button' })).map(b => b.key)).toEqual(['again', 'copy', 'artifact', 'close'])
 
   await pane.press({ key: 'again' })
   await settle()
@@ -97,4 +97,40 @@ test('the band yields to a survey', async ($, on) => {
   const band = await $.ui.mount({ ...BAND, props: { ...BAND.props, hasSurvey: true } })
 
   expect(await band.findAll({ type: 'Button' })).toHaveLength(0)
+})
+
+test('Artifact lays the answer out, writes it out of git and publishes it', async ($, on) => {
+  clock(on)
+  const writes: { path: string; text: string }[] = []
+  const published: unknown[] = []
+  on('ui.open', () => ({ value: { isPlaced: true as const } }))
+  on('fs.read', (_, e) => ({ value: e.path.endsWith('exclude') ? '# git ls-files --others\n' : SKILL }))
+  on('fs.exists', () => ({ value: true }))
+  on('fs.write', (_, e) => {
+    writes.push({ path: e.path, text: e.text })
+    return { value: undefined }
+  })
+  on('model.fork', () => ({ value: { isAnswered: true as const, text: '# Lesson', usage: USAGE } }))
+  on('model.complete', () => ({ value: { isAnswered: true as const, text: '```html\n<h1>Lesson</h1>\n```', usage: USAGE } }))
+  on('tool.call', { tool: 'Artifact' }, (_, e) => {
+    published.push(e)
+    return { result: 'Published https://claude.ai/code/artifact/abc-123 (private)' }
+  })
+  const band = await $.ui.mount(BAND)
+
+  await band.press({ key: 'teach' })
+  await settle()
+  const pane = await $.ui.mount(PANE_TARGET)
+  await pane.press({ key: 'artifact' })
+  await settle()
+
+  expect(writes[0]?.path).toMatch(/\/\.git\/info\/exclude$/)
+  expect(writes[0]?.text).toBe('# git ls-files --others\n.claude/how-why-teach/\n')
+  expect(writes[1]?.path).toMatch(/\/\.claude\/how-why-teach\/teach-\d+\.html$/)
+  expect(writes[1]?.text).toContain('<title>Session lesson</title>')
+  expect(writes[1]?.text).toContain('<h1>Lesson</h1>')
+  expect(writes[1]?.text).not.toContain('```')
+  expect(published).toMatchObject([{ file_path: expect.stringMatching(/^\.claude\/how-why-teach\/teach-\d+\.html$/), icon: 'book' }])
+  expect((await pane.find({ type: 'Link' }))?.props).toMatchObject({ href: 'https://claude.ai/code/artifact/abc-123' })
+  expect((await pane.findAll({ type: 'Button' })).map(b => b.key)).toEqual(['again', 'copy', 'open', 'close'])
 })

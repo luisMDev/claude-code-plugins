@@ -3,6 +3,8 @@ export type Answer = {
   status: 'loading' | 'done' | 'error'
   text: string
   seconds?: number
+  // The answer published as an artifact: its URL once done, the reason on an error.
+  artifact?: { status: 'publishing' | 'done' | 'error'; text: string }
 }
 
 declare module 'claude-code' {
