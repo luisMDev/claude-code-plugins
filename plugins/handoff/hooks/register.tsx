@@ -1,5 +1,5 @@
 import { atom, read, update } from 'claude-code'
-import type { ElementConstructor, EngineInterface, Register, TextProps } from 'claude-code'
+import type { BoxProps, ElementConstructor, EngineInterface, Register, RenderElement, TextProps } from 'claude-code'
 
 import type { Handoff } from '../types'
 
@@ -74,6 +74,42 @@ async function start($: EngineInterface, doc: string) {
   }
 }
 
+// Bands of several mods share one row of buttons above the engine's own band:
+// the first mod drawn keys a column ('mod-band') whose first child is the row
+// ('mod-buttons'); each mod above it puts its group at the row's start.
+const BAND_ROOT = 'mod-band'
+const BAND_ROW = 'mod-buttons'
+
+function joinBand(
+  Box: ElementConstructor<BoxProps>,
+  Text: ElementConstructor<TextProps>,
+  mine: RenderElement,
+  below: RenderElement,
+) {
+  const [row, ...rest] = below.type === 'Box' && below.props?.key === BAND_ROOT ? (below.children ?? []) : []
+  if (typeof row === 'object' && row.type === 'Box' && row.props?.key === BAND_ROW) {
+    return (
+      <Box key={BAND_ROOT} flexDirection="column">
+        <Box key={BAND_ROW} columnGap={2} flexShrink={0}>
+          {mine}
+          <Text dimColor>│</Text>
+          {row.children ?? []}
+        </Box>
+        {rest}
+      </Box>
+    )
+  }
+
+  return (
+    <Box key={BAND_ROOT} flexDirection="column">
+      <Box key={BAND_ROW} columnGap={2} flexShrink={0}>
+        {mine}
+      </Box>
+      {below}
+    </Box>
+  )
+}
+
 function capsule(Text: ElementConstructor<TextProps>, label: string, color: string) {
   return [
     <Text color={PILL_BG}>{''}</Text>,
@@ -85,7 +121,7 @@ function capsule(Text: ElementConstructor<TextProps>, label: string, color: stri
 }
 
 export const register: Register = on => {
-  // Draws its button beside whatever the plugins beneath draw, so bands share the row.
+  // Shares the row of buttons with the mods beneath, the engine's band under it.
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey) {
       return next(e)
@@ -94,13 +130,13 @@ export const register: Register = on => {
     const { Box, Button, Text } = $.ui.resolve(e)
     const below = await next(e)
 
-    return (
-      <Box columnGap={3}>
-        <Button key="handoff" plain onPress={() => write($)}>
-          {capsule(Text, 'Handoff', COLOR)}
-        </Button>
-        {below}
-      </Box>
+    return joinBand(
+      Box,
+      Text,
+      <Button key="handoff" plain onPress={() => write($)}>
+        {capsule(Text, 'Handoff', COLOR)}
+      </Button>,
+      below,
     )
   })
 

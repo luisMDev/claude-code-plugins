@@ -143,10 +143,22 @@ test('Artifact lays the answer out, writes it out of git and publishes it', asyn
   expect((await pane.findAll({ type: 'Button' })).map(b => b.key)).toEqual(['again', 'copy', 'open', 'close'])
 })
 
-test('the band shares its row with the bands beneath', async ($, on) => {
-  engineBand(on, 'another band')
+test('the band shares one row with the mods beneath, the engine band under it', async ($, on) => {
+  on('ui.render', { component: 'AbovePrompt' }, ($, e) => {
+    const { Box, Text } = $.ui.resolve(e)
+    return h(
+      Box,
+      { key: 'mod-band', flexDirection: 'column' },
+      h(Box, { key: 'mod-buttons' }, h(Text, null, 'Other mod')),
+      h(Text, null, 'engine notice'),
+    ) as ReturnType<typeof Box>
+  })
   const band = await $.ui.mount(BAND)
 
-  expect(await band.findAll({ type: 'Button' })).toHaveLength(3)
-  expect(await band.find({ type: 'Text', text: 'another band' })).toBeDefined()
+  const texts = (await band.findAll({ type: 'Text' })).map(t => t.text)
+  const at = (text: string) => texts.indexOf(text)
+  expect(at(' Teach ')).toBeGreaterThanOrEqual(0)
+  expect(at(' Teach ')).toBeLessThan(at('│'))
+  expect(at('│')).toBeLessThan(at('Other mod'))
+  expect(at('Other mod')).toBeLessThan(at('engine notice'))
 })

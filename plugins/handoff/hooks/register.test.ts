@@ -113,10 +113,22 @@ test('a session that does not start says why and keeps the button', async ($, on
   expect((await pane.findAll({ type: 'Button' })).map(b => b.key)).toEqual(['again', 'copy', 'session', 'close'])
 })
 
-test('the band shares its row with the bands beneath', async ($, on) => {
-  engineBand(on, 'another band')
+test('the band shares one row with the mods beneath, the engine band under it', async ($, on) => {
+  on('ui.render', { component: 'AbovePrompt' }, ($, e) => {
+    const { Box, Text } = $.ui.resolve(e)
+    return h(
+      Box,
+      { key: 'mod-band', flexDirection: 'column' },
+      h(Box, { key: 'mod-buttons' }, h(Text, null, 'Other mod')),
+      h(Text, null, 'engine notice'),
+    ) as ReturnType<typeof Box>
+  })
   const band = await $.ui.mount(BAND)
 
-  expect(await band.find({ key: 'handoff' })).toBeDefined()
-  expect(await band.find({ type: 'Text', text: 'another band' })).toBeDefined()
+  const texts = (await band.findAll({ type: 'Text' })).map(t => t.text)
+  const at = (text: string) => texts.indexOf(text)
+  expect(at(' Handoff ')).toBeGreaterThanOrEqual(0)
+  expect(at(' Handoff ')).toBeLessThan(at('│'))
+  expect(at('│')).toBeLessThan(at('Other mod'))
+  expect(at('Other mod')).toBeLessThan(at('engine notice'))
 })
