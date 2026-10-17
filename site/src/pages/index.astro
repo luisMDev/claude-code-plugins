@@ -1,6 +1,7 @@
 ---
 import '@fontsource/geist-mono/400.css'
 import '@fontsource/geist-mono/700.css'
+import Footer from '../components/Footer.astro'
 import Terminal from '../components/Terminal.astro'
 import { MARKETPLACE, REPO, plugins } from '../plugins'
 
@@ -20,18 +21,27 @@ const title = 'claude-code-plugins'
       content="Claude Code plugins and mods by LuismDev: How, Why and Teach buttons, and a Handoff button, above the prompt."
     />
     <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}/favicon.svg`} />
+    <script is:inline>
+      // Before first paint, so the demo lines start hidden rather than flash.
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.classList.add('fx')
+    </script>
   </head>
   <body>
     <nav>
-      <a href="#plugins"><span class="key">[P]</span>PLUGINS</a>
-      <a href="#install"><span class="key">[I]</span>INSTALL</a>
-      <a href={github}><span class="key">[G]</span>GITHUB↗</a>
-      <a href="https://code.claude.com/docs"><span class="key">[D]</span>DOCS↗</a>
+      <a href="#plugins" data-scramble><span class="key">[P]</span><span data-scramble-text>PLUGINS</span></a>
+      <a href="#install" data-scramble><span class="key">[I]</span><span data-scramble-text>INSTALL</span></a>
+      <a href={github} data-scramble><span class="key">[G]</span><span data-scramble-text>GITHUB↗</span></a>
+      <a href="https://code.claude.com/docs" data-scramble
+        ><span class="key">[D]</span><span data-scramble-text>DOCS↗</span></a
+      >
     </nav>
 
     <main>
       <header class="hero">
-        <h1>{title}<span class="rule" aria-hidden="true">{underline(title, '=')}</span></h1>
+        <h1 aria-label={title}>
+          <span aria-hidden="true"><span data-type="75">{title}</span><span class="cursor"></span></span>
+          <span class="rule" aria-hidden="true">{underline(title, '=')}</span>
+        </h1>
         <p class="lead">
           Small plugins that put buttons above the Claude Code prompt. Each one answers in a side pane from a fork of
           the session, so the main thread never gets an extra turn.
@@ -124,14 +134,11 @@ const title = 'claude-code-plugins'
       </section>
     </main>
 
-    <footer>
-      <span>{title}</span>
-      <span class="muted">by LuismDev · not affiliated with Anthropic</span>
-      <a href={github}>GITHUB↗</a>
-      <a href={`${github}/issues`}>ISSUES↗</a>
-    </footer>
+    <Footer />
 
     <script>
+      import '../scripts/terminal-fx'
+
       for (const button of document.querySelectorAll<HTMLButtonElement>('[data-copy]')) {
         button.addEventListener('click', async () => {
           await navigator.clipboard.writeText(button.dataset.copy ?? '')
@@ -155,6 +162,7 @@ const title = 'claude-code-plugins'
     --term-ink: #ececec;
     --term-dim: #8a8780;
     --term-rule: #3a3a37;
+    --space-dot: #a3a198;
     color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
@@ -165,6 +173,7 @@ const title = 'claude-code-plugins'
       --line: #2e2d2a;
       --panel: #1e1d1b;
       --accent: #d97757;
+      --space-dot: #5e5d58;
       color-scheme: dark;
     }
   }
@@ -186,12 +195,14 @@ const title = 'claude-code-plugins'
   code {
     font-family: inherit;
   }
+  .fx [data-type]:not([data-text]) {
+    visibility: hidden;
+  }
 </style>
 
 <style>
   nav,
-  main,
-  footer {
+  main {
     max-width: 880px;
     margin: 0 auto;
     padding-inline: 16px;
@@ -352,17 +363,28 @@ const title = 'claude-code-plugins'
   ol li + li {
     margin-top: 20px;
   }
-  footer {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 20px;
-    padding-block: 28px 40px;
-    border-top: 1px solid var(--line);
-    font-size: 13px;
+  .cursor {
+    display: inline-block;
+    width: 0.55em;
+    height: 0.9em;
+    margin-left: 0.08em;
+    background: var(--accent);
+    vertical-align: -0.05em;
+    animation: blink 1.1s steps(1) infinite;
   }
-  footer a {
-    text-decoration: none;
-    color: var(--accent);
+  @keyframes blink {
+    50% {
+      opacity: 0;
+    }
+  }
+  :global(.fx) .rule {
+    clip-path: inset(0 100% 0 0);
+    animation: draw 0.9s steps(20) 1.6s forwards;
+  }
+  @keyframes draw {
+    to {
+      clip-path: inset(0 0 0 0);
+    }
   }
   @media (max-width: 640px) {
     dl {

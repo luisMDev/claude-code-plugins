@@ -17,11 +17,11 @@ const { id, buttons } = Astro.props
   </div>
   <div class="body">
     <div class="session">
-      <p><span class="clay">❯</span> build a landing page for the plugins</p>
-      <p><span class="green">●</span> Write(<span class="ink">site/src/pages/index.astro</span>)</p>
-      <p class="dim">&nbsp;&nbsp;└ Wrote 180 lines</p>
-      <p class="clay">✻ <span class="dim">Churned for 41s</span></p>
-      <div class="band">
+      <p data-line><span class="clay">❯</span> <span data-typed>build a landing page for the plugins</span></p>
+      <p data-line><span class="green">●</span> Write(<span class="ink">site/src/pages/index.astro</span>)</p>
+      <p data-line class="dim">&nbsp;&nbsp;└ Wrote 180 lines</p>
+      <p data-line class="clay">✻ <span class="dim">Churned for 41s</span></p>
+      <div data-line class="band">
         {buttons.map((b, i) => (
           <button
             type="button"
@@ -35,9 +35,9 @@ const { id, buttons } = Astro.props
         ))}
         <span class="dim">·</span>
       </div>
-      <div class="prompt"><span class="dim">❯</span><span class="caret"></span></div>
+      <div data-line class="prompt"><span class="dim">❯</span><span class="caret"></span></div>
     </div>
-    <aside class="pane" aria-live="polite">
+    <aside data-line class="pane" aria-live="polite">
       {buttons.map((b, i) => (
         <div class="answer" data-answer={i} hidden={i !== 0}>
           <header>
@@ -79,6 +79,17 @@ const { id, buttons } = Astro.props
 </script>
 
 <style>
+  :global(.fx) [data-line] {
+    opacity: 0;
+    transform: translateY(4px);
+    transition:
+      opacity 0.35s ease,
+      transform 0.35s ease;
+  }
+  :global(.fx) [data-line].is-in {
+    opacity: 1;
+    transform: none;
+  }
   .term {
     margin: 0;
     background: var(--term-bg);
