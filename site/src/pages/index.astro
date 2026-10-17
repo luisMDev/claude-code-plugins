@@ -43,6 +43,9 @@ const title = 'claude-code-plugins'
             <a href="?hero=plug" data-pick="plug">PLUG</a>
             <a href="?hero=led" data-pick="led">LED</a>
             <a href="?hero=term" data-pick="term">TERM</a>
+            <a href="?hero=morph" data-pick="morph">MORPH</a>
+            <a href="?hero=circuit" data-pick="circuit">CIRCUIT</a>
+            <a href="?hero=orbit" data-pick="orbit">ORBIT</a>
           </nav>
         </div>
         <h1 aria-label={title}>
@@ -146,11 +149,14 @@ const title = 'claude-code-plugins'
     <script>
       import '../scripts/terminal-fx'
 
-      // Three header options while we choose one: ?hero=plug|led|term.
+      // Header options while we choose one: ?hero=plug|led|term|morph|circuit|orbit.
       const heroes = {
         plug: () => import('../scripts/heroes/plug'),
         led: () => import('../scripts/heroes/led'),
         term: () => import('../scripts/heroes/term'),
+        morph: () => import('../scripts/heroes/morph'),
+        circuit: () => import('../scripts/heroes/circuit'),
+        orbit: () => import('../scripts/heroes/orbit'),
       }
       const host = document.querySelector<HTMLElement>('[data-hero]')
       const asked = new URLSearchParams(location.search).get('hero')
@@ -280,8 +286,10 @@ const title = 'claude-code-plugins'
     right: 16px;
     z-index: 1;
     display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     gap: 4px;
-    max-width: none;
+    max-width: calc(100% - 32px);
     margin: 0;
     padding: 0;
     font-size: 11px;
