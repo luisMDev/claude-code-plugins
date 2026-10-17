@@ -1,10 +1,13 @@
 import type { Register } from 'claude-code'
 
 const BUTTONS = [
-  { key: 'how', label: 'How', color: 'suggestion' },
-  { key: 'why', label: 'Why', color: 'warning' },
-  { key: 'teach', label: 'Teach', color: 'success' },
+  { key: 'how', label: 'How', color: '#87afaf' },
+  { key: 'why', label: 'Why', color: '#ffaf00' },
+  { key: 'teach', label: 'Teach', color: '#afaf00' },
 ] as const
+
+// The status line's capsule: rounded caps (Nerd Font) around a filled body.
+const PILL_BG = '#504945'
 
 export const prompt = (skill: string) =>
   `Use the how-why-teach:${skill} skill on what we are doing in this session.`
@@ -25,9 +28,11 @@ export const register: Register = on => {
             key={b.key}
             onPress={() => $.prompt.submit({ text: prompt(b.key), asUser: true })}
           >
-            <Text backgroundColor={b.color} color="inverseText" bold>
+            <Text color={PILL_BG}>{'\ue0b6'}</Text>
+            <Text backgroundColor={PILL_BG} color={b.color} bold>
               {` ${b.label} `}
             </Text>
+            <Text color={PILL_BG}>{'\ue0b4'}</Text>
           </Button>,
         ])}
       </Box>
