@@ -76,7 +76,7 @@ async function start($: EngineInterface, doc: string) {
 
 // Bands of several mods share one row of buttons above the engine's own band:
 // the first mod drawn keys a column ('mod-band') whose first child is the row
-// ('mod-buttons'); each mod above it puts its group at the row's start.
+// ('mod-buttons'); each mod above it puts its group at the row's start, a dot between.
 const BAND_ROOT = 'mod-band'
 const BAND_ROW = 'mod-buttons'
 
@@ -89,10 +89,10 @@ function joinBand(
   const [row, ...rest] = below.type === 'Box' && below.props?.key === BAND_ROOT ? (below.children ?? []) : []
   if (typeof row === 'object' && row.type === 'Box' && row.props?.key === BAND_ROW) {
     return (
-      <Box key={BAND_ROOT} flexDirection="column">
-        <Box key={BAND_ROW} columnGap={2} flexShrink={0}>
+      <Box key={BAND_ROOT} flexDirection="column" paddingTop={1}>
+        <Box key={BAND_ROW} columnGap={1} flexShrink={0}>
           {mine}
-          <Text dimColor>│</Text>
+          <Text dimColor>·</Text>
           {row.children ?? []}
         </Box>
         {rest}
@@ -101,8 +101,8 @@ function joinBand(
   }
 
   return (
-    <Box key={BAND_ROOT} flexDirection="column">
-      <Box key={BAND_ROW} columnGap={2} flexShrink={0}>
+    <Box key={BAND_ROOT} flexDirection="column" paddingTop={1}>
+      <Box key={BAND_ROW} columnGap={1} flexShrink={0}>
         {mine}
       </Box>
       {below}
