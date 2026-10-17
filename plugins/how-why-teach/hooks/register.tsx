@@ -25,7 +25,9 @@ export const register: Register = on => {
             key={b.key}
             onPress={() => $.prompt.submit({ text: prompt(b.key), asUser: true })}
           >
-            <Text color={b.color} bold>{b.label}</Text>
+            <Text backgroundColor={b.color} color="inverseText" bold>
+              {` ${b.label} `}
+            </Text>
           </Button>,
         ])}
       </Box>
