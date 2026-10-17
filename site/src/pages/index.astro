@@ -1,0 +1,379 @@
+---
+import '@fontsource/geist-mono/400.css'
+import '@fontsource/geist-mono/700.css'
+import Terminal from '../components/Terminal.astro'
+import { MARKETPLACE, REPO, plugins } from '../plugins'
+
+const github = `https://github.com/${REPO}`
+const underline = (text: string, char: string) => char.repeat(text.length)
+const title = 'claude-code-plugins'
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LuismDev's Claude Code plugins</title>
+    <meta
+      name="description"
+      content="Claude Code plugins and mods by LuismDev: How, Why and Teach buttons, and a Handoff button, above the prompt."
+    />
+    <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}/favicon.svg`} />
+  </head>
+  <body>
+    <nav>
+      <a href="#plugins"><span class="key">[P]</span>PLUGINS</a>
+      <a href="#install"><span class="key">[I]</span>INSTALL</a>
+      <a href={github}><span class="key">[G]</span>GITHUB↗</a>
+      <a href="https://code.claude.com/docs"><span class="key">[D]</span>DOCS↗</a>
+    </nav>
+
+    <main>
+      <header class="hero">
+        <h1>{title}<span class="rule" aria-hidden="true">{underline(title, '=')}</span></h1>
+        <p class="lead">
+          Small plugins that put buttons above the Claude Code prompt. Each one answers in a side pane from a fork of
+          the session, so the main thread never gets an extra turn.
+        </p>
+        <div class="cmd">
+          <code>/plugin marketplace add {REPO}</code>
+          <button type="button" class="copy" data-copy={`/plugin marketplace add ${REPO}`}>COPY</button>
+        </div>
+      </header>
+
+      <section id="plugins">
+        <h2>PLUGINS<sup>{plugins.length}</sup></h2>
+        {
+          plugins.map((p) => (
+            <article id={p.name}>
+              <Terminal id={p.name} buttons={p.buttons} />
+              <h3>
+                <a href={`${github}/tree/main/plugins/${p.name}`}>{p.name}</a>
+                <span class="version">v{p.version}</span>
+                <span class="rule" aria-hidden="true">{underline(p.name, '-')}</span>
+              </h3>
+              <p>{p.description}</p>
+              <dl>
+                <dt>HOOKS</dt>
+                <dd>{p.hooks.map((h) => <code>{h}</code>)}</dd>
+                <dt>DRAWS</dt>
+                <dd>{p.draws}</dd>
+                <dt>SKILLS</dt>
+                <dd>
+                  <ul>
+                    {p.skills.map((s) => (
+                      <li>
+                        <code>
+                          {p.name}:{s.name}
+                        </code>{' '}
+                        <span class="muted">{s.description.split(' Use when')[0]}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </dd>
+                <dt>INSTALL</dt>
+                <dd class="cmd">
+                  <code>
+                    /plugin install {p.name}@{MARKETPLACE}
+                  </code>
+                  <button type="button" class="copy" data-copy={`/plugin install ${p.name}@${MARKETPLACE}`}>
+                    COPY
+                  </button>
+                </dd>
+              </dl>
+              <a class="more" href={`${github}/tree/main/plugins/${p.name}`}>
+                SOURCE↗
+              </a>
+            </article>
+          ))
+        }
+      </section>
+
+      <section id="install">
+        <h2>INSTALL</h2>
+        <ol>
+          <li>
+            In a terminal session, add the marketplace:
+            <div class="cmd">
+              <code>/plugin marketplace add {REPO}</code>
+              <button type="button" class="copy" data-copy={`/plugin marketplace add ${REPO}`}>COPY</button>
+            </div>
+          </li>
+          <li>
+            Install the plugins you want:
+            {
+              plugins.map((p) => (
+                <div class="cmd">
+                  <code>
+                    /plugin install {p.name}@{MARKETPLACE}
+                  </code>
+                  <button type="button" class="copy" data-copy={`/plugin install ${p.name}@${MARKETPLACE}`}>
+                    COPY
+                  </button>
+                </div>
+              ))
+            }
+          </li>
+          <li>
+            The buttons appear above the prompt; both plugins share one row. In the desktop app, click{' '}
+            <strong>+</strong> next to the prompt box, then <strong>Plugins → Add marketplace</strong> with{' '}
+            <code>{REPO}</code>.
+          </li>
+        </ol>
+      </section>
+    </main>
+
+    <footer>
+      <span>{title}</span>
+      <span class="muted">by LuismDev · not affiliated with Anthropic</span>
+      <a href={github}>GITHUB↗</a>
+      <a href={`${github}/issues`}>ISSUES↗</a>
+    </footer>
+
+    <script>
+      for (const button of document.querySelectorAll<HTMLButtonElement>('[data-copy]')) {
+        button.addEventListener('click', async () => {
+          await navigator.clipboard.writeText(button.dataset.copy ?? '')
+          button.textContent = 'COPIED'
+          setTimeout(() => (button.textContent = 'COPY'), 1500)
+        })
+      }
+    </script>
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    --bg: #faf9f5;
+    --ink: #141413;
+    --muted: #73726b;
+    --line: #dedcd3;
+    --panel: #f1efe8;
+    --accent: #c15f3c;
+    --term-bg: #1a1a18;
+    --term-ink: #ececec;
+    --term-dim: #8a8780;
+    --term-rule: #3a3a37;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141413;
+      --ink: #ececec;
+      --muted: #9b9b9b;
+      --line: #2e2d2a;
+      --panel: #1e1d1b;
+      --accent: #d97757;
+      color-scheme: dark;
+    }
+  }
+  * {
+    box-sizing: border-box;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.65 'Geist Mono', ui-monospace, monospace;
+  }
+  a {
+    color: inherit;
+  }
+  code {
+    font-family: inherit;
+  }
+</style>
+
+<style>
+  nav,
+  main,
+  footer {
+    max-width: 880px;
+    margin: 0 auto;
+    padding-inline: 16px;
+  }
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 24px;
+    padding-block: 20px;
+    font-size: 13px;
+  }
+  nav a {
+    text-decoration: none;
+    letter-spacing: 0.04em;
+  }
+  nav a:hover {
+    color: var(--accent);
+  }
+  .key {
+    color: var(--accent);
+  }
+  .hero {
+    padding-block: 64px 48px;
+  }
+  h1 {
+    font-size: clamp(28px, 7vw, 52px);
+    line-height: 1.1;
+    margin: 0 0 24px;
+    overflow-wrap: anywhere;
+  }
+  .rule {
+    display: block;
+    color: var(--accent);
+    font-size: 0.5em;
+    line-height: 1;
+    font-weight: 400;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  h1 .rule {
+    font-size: inherit;
+    letter-spacing: 0;
+    line-height: 0.6;
+  }
+  .lead {
+    max-width: 60ch;
+    color: var(--muted);
+    margin: 0 0 28px;
+  }
+  .cmd {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: 100%;
+    margin: 8px 0;
+    padding: 8px 8px 8px 14px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+  .cmd code {
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .copy {
+    font: inherit;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    color: var(--bg);
+    background: var(--ink);
+    border: 0;
+    border-radius: 6px;
+    padding: 4px 10px;
+    cursor: pointer;
+  }
+  .copy:hover {
+    background: var(--accent);
+  }
+  h2 {
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    border-top: 1px solid var(--line);
+    padding-top: 28px;
+    margin: 0 0 32px;
+  }
+  sup {
+    color: var(--accent);
+    margin-left: 2px;
+  }
+  article {
+    margin-bottom: 72px;
+  }
+  h3 {
+    font-size: 20px;
+    margin: 28px 0 8px;
+  }
+  h3 a {
+    text-decoration: none;
+  }
+  h3 a:hover {
+    color: var(--accent);
+  }
+  .version {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--muted);
+    margin-left: 10px;
+  }
+  dl {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 10px 20px;
+    margin: 20px 0;
+    font-size: 13px;
+  }
+  dt {
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+  dd {
+    margin: 0;
+    min-width: 0;
+  }
+  dd.cmd {
+    margin: -8px 0 0;
+  }
+  dd ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  dd li + li {
+    margin-top: 6px;
+  }
+  dd code,
+  ol code {
+    color: var(--accent);
+  }
+  .cmd code {
+    color: var(--ink);
+  }
+  .muted {
+    color: var(--muted);
+  }
+  .more {
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    text-decoration: none;
+  }
+  ol {
+    padding-left: 1.4em;
+    margin: 0 0 64px;
+  }
+  ol li + li {
+    margin-top: 20px;
+  }
+  footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    padding-block: 28px 40px;
+    border-top: 1px solid var(--line);
+    font-size: 13px;
+  }
+  footer a {
+    text-decoration: none;
+    color: var(--accent);
+  }
+  @media (max-width: 640px) {
+    dl {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 4px;
+    }
+    dd {
+      margin-bottom: 12px;
+    }
+    dd.cmd {
+      margin: 0 0 12px;
+    }
+  }
+</style>

@@ -1,6 +1,6 @@
 # claude-code-plugins
 
-LuismDev's Claude Code plugins, published as one marketplace.
+LuismDev's Claude Code plugins, published as one marketplace. Site: https://luismdev.github.io/claude-code-plugins/
 
 | Plugin | What it does |
 | -- | -- |
@@ -33,4 +33,16 @@ In the desktop app, where `/plugin` does not run: click + next to the prompt box
 claude --plugin-dir plugins/<plugin>   # run a session with the plugin loaded from disk
 claude plugin validate plugins/<plugin>
 claude plugin test plugins/<plugin>
+```
+
+## Site
+
+`site/` is the plugins' landing page, an Astro static site. It reads `.claude-plugin/marketplace.json`, each `plugin.json` and each `SKILL.md` at build time; what the manifests do not say (hooks, what each mod draws, the demo's buttons) is in `site/src/plugins.ts`. `.github/workflows/site.yml` publishes it to GitHub Pages on every push to `main`.
+
+```
+cd site
+npm install
+npm run dev     # http://localhost:4321/claude-code-plugins/
+npm run build   # dist/
+npm run check
 ```
