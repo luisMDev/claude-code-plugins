@@ -9,6 +9,11 @@
       "name": "how-why-teach",
       "source": "./plugins/how-why-teach",
       "description": "How, Why and Teach buttons above the prompt that explain the current session."
+    },
+    {
+      "name": "handoff",
+      "source": "./plugins/handoff",
+      "description": "A Handoff button above the prompt that writes a handoff of the session and starts a new background session from it."
     }
   ]
 }
