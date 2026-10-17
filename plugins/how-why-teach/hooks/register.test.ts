@@ -1,3 +1,4 @@
+import type { On } from 'claude-code'
 import { expect, test } from 'claude-code/testing'
 
 import { PANE } from './register'
@@ -21,9 +22,16 @@ const USAGE = { input_tokens: 1, output_tokens: 1, cache_read_input_tokens: 0, c
 
 const SKILL = '---\nname: how\ndescription: Explain how.\n---\n\n# How\n\nExplain the mechanism.\n'
 
+// A clock that moves 4 s on each read, so a fork reads as taking 4 s.
+function clock(on: On) {
+  let now = 0
+  on('clock.now', () => ({ value: (now += 4000) }))
+}
+
 const settle = () => new Promise<void>(resolve => setTimeout(resolve, 50))
 
 test('a button answers in the pane from a fork of the session, never through a prompt', async ($, on) => {
+  clock(on)
   const reads: string[] = []
   on('fs.read', (_, e) => {
     reads.push(e.path)
@@ -58,9 +66,16 @@ test('a button answers in the pane from a fork of the session, never through a p
   expect(opened).toEqual([PANE])
   const pane = await $.ui.mount(PANE_TARGET)
   expect((await pane.find({ key: 'answer' }))?.text).toContain('how')
+  expect(await pane.find({ type: 'Text', text: '4s' })).toBeDefined()
+  expect((await pane.findAll({ type: 'Button' })).map(b => b.key)).toEqual(['again', 'copy', 'close'])
+
+  await pane.press({ key: 'again' })
+  await settle()
+  expect(forks).toHaveLength(2)
 })
 
 test('a fork with no answer shows why in the pane', async ($, on) => {
+  clock(on)
   on('ui.open', () => ({ value: { isPlaced: true as const } }))
   on('fs.read', () => ({ value: SKILL }))
   on('model.fork', () => ({ value: { isAnswered: false as const, reason: 'nothing-to-fork' as const, usage: USAGE } }))
@@ -71,6 +86,7 @@ test('a fork with no answer shows why in the pane', async ($, on) => {
 
   const pane = await $.ui.mount(PANE_TARGET)
   expect(await pane.find({ type: 'Text', text: /nothing-to-fork/ })).toBeDefined()
+  expect((await pane.findAll({ type: 'Button' })).map(b => b.key)).toEqual(['again', 'close'])
 })
 
 test('the band yields to a survey', async ($, on) => {
