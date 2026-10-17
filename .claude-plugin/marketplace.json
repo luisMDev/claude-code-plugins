@@ -1,0 +1,14 @@
+{
+  "name": "claude-code-plugins",
+  "description": "LuismDev's Claude Code plugins.",
+  "owner": {
+    "name": "LuismDev"
+  },
+  "plugins": [
+    {
+      "name": "how-why-teach",
+      "source": "./plugins/how-why-teach",
+      "description": "How, Why and Teach buttons above the prompt that explain the current session."
+    }
+  ]
+}
