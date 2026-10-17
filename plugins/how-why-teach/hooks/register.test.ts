@@ -28,6 +28,14 @@ function clock(on: On) {
   on('clock.now', () => ({ value: (now += 4000) }))
 }
 
+// What the engine draws beneath the plugins' bands: here a line of its own.
+function engineBand(on: On, text = 'engine band') {
+  on('ui.render', { component: 'AbovePrompt' }, ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return h(Text, null, text) as ReturnType<typeof Text>
+  })
+}
+
 const settle = () => new Promise<void>(resolve => setTimeout(resolve, 50))
 
 test('a button answers in the pane from a fork of the session, never through a prompt', async ($, on) => {
@@ -52,6 +60,7 @@ test('a button answers in the pane from a fork of the session, never through a p
     opened.push(e.id)
     return { value: { isPlaced: true as const } }
   })
+  engineBand(on)
   const band = await $.ui.mount(BAND)
 
   expect(await band.findAll({ type: 'Button' })).toHaveLength(3)
@@ -79,6 +88,7 @@ test('a fork with no answer shows why in the pane', async ($, on) => {
   on('ui.open', () => ({ value: { isPlaced: true as const } }))
   on('fs.read', () => ({ value: SKILL }))
   on('model.fork', () => ({ value: { isAnswered: false as const, reason: 'nothing-to-fork' as const, usage: USAGE } }))
+  engineBand(on)
   const band = await $.ui.mount(BAND)
 
   await band.press({ key: 'teach' })
@@ -90,10 +100,7 @@ test('a fork with no answer shows why in the pane', async ($, on) => {
 })
 
 test('the band yields to a survey', async ($, on) => {
-  on('ui.render', { component: 'AbovePrompt' }, ($, e) => {
-    const { Text } = $.ui.resolve(e)
-    return h(Text, null, 'engine band') as ReturnType<typeof Text>
-  })
+  engineBand(on)
   const band = await $.ui.mount({ ...BAND, props: { ...BAND.props, hasSurvey: true } })
 
   expect(await band.findAll({ type: 'Button' })).toHaveLength(0)
@@ -116,6 +123,7 @@ test('Artifact lays the answer out, writes it out of git and publishes it', asyn
     published.push(e)
     return { result: 'Published https://claude.ai/code/artifact/abc-123 (private)' }
   })
+  engineBand(on)
   const band = await $.ui.mount(BAND)
 
   await band.press({ key: 'teach' })
@@ -133,4 +141,12 @@ test('Artifact lays the answer out, writes it out of git and publishes it', asyn
   expect(published).toMatchObject([{ file_path: expect.stringMatching(/^\.claude\/how-why-teach\/teach-\d+\.html$/), icon: 'book' }])
   expect((await pane.find({ type: 'Link' }))?.props).toMatchObject({ href: 'https://claude.ai/code/artifact/abc-123' })
   expect((await pane.findAll({ type: 'Button' })).map(b => b.key)).toEqual(['again', 'copy', 'open', 'close'])
+})
+
+test('the band shares its row with the bands beneath', async ($, on) => {
+  engineBand(on, 'another band')
+  const band = await $.ui.mount(BAND)
+
+  expect(await band.findAll({ type: 'Button' })).toHaveLength(3)
+  expect(await band.find({ type: 'Text', text: 'another band' })).toBeDefined()
 })

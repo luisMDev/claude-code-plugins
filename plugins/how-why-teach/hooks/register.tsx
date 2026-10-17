@@ -107,21 +107,26 @@ function capsule(Text: ElementConstructor<TextProps>, label: string, color: stri
 }
 
 export const register: Register = on => {
-  on('ui.render', { component: 'AbovePrompt' }, ($, e, next) => {
+  // Draws its buttons beside whatever the plugins beneath draw, so bands share the row.
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey) {
       return next(e)
     }
 
     const { Box, Button, Text } = $.ui.resolve(e)
+    const below = await next(e)
 
     return (
-      <Box>
-        {BUTTONS.flatMap((b, i) => [
-          ...(i > 0 ? [<Text key={`sep-${b.key}`} dimColor> · </Text>] : []),
-          <Button key={b.key} plain onPress={() => ask($, b.key, b.label)}>
-            {capsule(Text, b.label, b.color)}
-          </Button>,
-        ])}
+      <Box columnGap={3}>
+        <Box>
+          {BUTTONS.flatMap((b, i) => [
+            ...(i > 0 ? [<Text key={`sep-${b.key}`} dimColor> · </Text>] : []),
+            <Button key={b.key} plain onPress={() => ask($, b.key, b.label)}>
+              {capsule(Text, b.label, b.color)}
+            </Button>,
+          ])}
+        </Box>
+        {below}
       </Box>
     )
   })

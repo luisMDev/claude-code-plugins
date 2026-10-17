@@ -5,6 +5,7 @@ LuismDev's Claude Code plugins, published as one marketplace.
 | Plugin | What it does |
 | -- | -- |
 | [`how-why-teach`](plugins/how-why-teach) | A band above the prompt with three buttons. **How** explains how the current work is done, **Why** explains why it is done this way (pros, cons, alternatives, how to do it better), **Teach** walks you through it like a teacher. Each button opens a side pane and answers there from a fork of the session (`$.model.fork`), with the matching skill's instructions as the question, so the main thread gets no extra turns. From the pane, **Artifact** lays the answer out as a page (written to `.claude/how-why-teach/`, kept out of git through `.git/info/exclude`) and publishes it as a private claude.ai artifact after you approve the Artifact tool call. The skills (`how-why-teach:how`, `:why`, `:teach`) can also be invoked by name. |
+| [`handoff`](plugins/handoff) | A **Handoff** button above the prompt. It writes a handoff of the session in a side pane from a fork (`$.model.fork`, the `handoff:handoff` skill as the question), so the main thread is untouched. **New session** saves it with `mktemp -t handoff-XXXXXX.md` and starts `claude --bg` on it; join with `claude attach <id>`. Both plugins' buttons share the row above the prompt. |
 
 ## Install
 
@@ -12,6 +13,7 @@ At the prompt of a terminal session:
 
 ```
 /plugin install how-why-teach --marketplace luisMDev/claude-code-plugins
+/plugin install handoff --marketplace luisMDev/claude-code-plugins
 ```
 
 Answer `y` to add the marketplace, then pick a scope (user scope is first; press Enter).
@@ -20,6 +22,7 @@ From a shell:
 
 ```
 claude plugin install how-why-teach --marketplace luisMDev/claude-code-plugins
+claude plugin install handoff --marketplace luisMDev/claude-code-plugins
 ```
 
 In the desktop app, where `/plugin` does not run: click + next to the prompt box, then Plugins, Add marketplace with `luisMDev/claude-code-plugins`, then Add plugin.
@@ -27,7 +30,7 @@ In the desktop app, where `/plugin` does not run: click + next to the prompt box
 ## Develop
 
 ```
-claude --plugin-dir plugins/how-why-teach   # run a session with the plugin loaded from disk
-claude plugin validate plugins/how-why-teach
-claude plugin test plugins/how-why-teach
+claude --plugin-dir plugins/<plugin>   # run a session with the plugin loaded from disk
+claude plugin validate plugins/<plugin>
+claude plugin test plugins/<plugin>
 ```
