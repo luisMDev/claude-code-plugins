@@ -1,5 +1,5 @@
-// The parts every plug header is built from: voxel boxes of dots, the plug,
-// the socket, a verlet cable, sparks and the caption that types itself.
+// The plug header's parts: voxel boxes of dots, the plug, a verlet cable,
+// sparks and the caption that types itself.
 import { THREE, dots, ink, reduced, type Dots, type Stage } from './dots'
 
 export const PRONG = 2.6 // how far the prongs reach past the plug's face
@@ -56,23 +56,6 @@ export function plugPoints() {
   const led = pts.length
   for (const x of [-3.6, -3, -2.4]) for (const z of [-0.5, 0.1]) pts.push([x, 3.4, z, 0.25, 1])
   return { pts, led, leds: pts.length - led }
-}
-
-/** A socket whose face is at `x`, centred on `y`: a block, two slots, a `❯` facing the camera and a ring (last). */
-export function socketPoints(x: number, y = 0, height = 12) {
-  const h = height / 2
-  const pts = box(x, x + 4, y - h, y + h, -6, 6, 0.7, 0.55).filter(
-    ([px, py, pz]) => !(px === x && Math.abs(Math.abs(py - y) - 1.2) < 0.55 && Math.abs(pz) < 0.5),
-  )
-  const glyph = ['##...', '.##..', '..##.', '.##..', '##...']
-  glyph.forEach((row, r) =>
-    [...row].forEach((c, col) => {
-      if (c === '#') pts.push([x + 0.9 + col * 0.55, y + 1.4 - r * 0.7, 6.4, 1, 1])
-    }),
-  )
-  const ring = pts.length
-  for (let a = 0; a < Math.PI * 2; a += 0.16) pts.push([x - 0.2, y + Math.sin(a) * 3.6, Math.cos(a) * 3.6, 0.18, 1])
-  return { pts, ring, rings: pts.length - ring }
 }
 
 /** A cable: a verlet rope from a fixed anchor, drawn as two strands of dots. */

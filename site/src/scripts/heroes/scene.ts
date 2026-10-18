@@ -1,19 +1,22 @@
-// Header option "glow": the plug, with more feedback. The plug warms to the
-// accent as it nears the socket; plugging in shakes the scene, sends a shock
-// ring out of the socket and keeps data pulses running down the cable; a dot
-// screen on the socket types the status.
+// The header: a voxel plug on a cable that follows the pointer, and a target
+// to plug it into (a planet, a brain or a hive mind), over a backdrop of
+// coloured stars, nebulae and a rolling grid. Everything swirls in on load.
+// The plug warms as it nears the port; plugging in shakes the scene, sends a
+// shock ring out, runs data pulses down the cable and wakes the target; a dot
+// screen above the target types the status. Click to plug in or pull out.
+import { backdrop } from './backdrop'
 import { THREE, dots, fit, ink, reduced, run, scanY, stage } from './dots'
-import { Rope, Sparks, TAIL, accent, caption, load, plugPoints, socketPoints, tones } from './kit'
+import { Rope, Sparks, TAIL, accent, caption, load, plugPoints, tones } from './kit'
+import { SX, TARGETS, type TargetKind } from './targets'
 
-const SOCKET_X = 14
-const ANCHOR = new THREE.Vector3(-40, 17, 0)
-const SCREEN = { w: 240, h: 64, step: 2, x: SOCKET_X - 2, y: 9.6, width: 12 } // the status screen above the socket
+const ANCHOR = new THREE.Vector3(-44, 17, 0)
 const SHOCK = 90
+const INTRO = 2.2 // seconds for the swirl-in
 
-export async function mount(host: HTMLElement) {
+export async function mount(host: HTMLElement, kind: TargetKind) {
   await document.fonts.load('700 26px "Geist Mono"')
   const group = new THREE.Group()
-  group.rotation.y = 0.42
+  group.rotation.y = 0.3
 
   const plugShape = plugPoints()
   const plug = new THREE.Group()
@@ -21,27 +24,27 @@ export async function mount(host: HTMLElement) {
   plug.add(plugDots.points)
   group.add(plug)
 
-  const socket = socketPoints(SOCKET_X)
-  const socketDots = dots(socket.pts.length)
-  group.add(socketDots.points)
+  const target = TARGETS[kind]()
+  group.add(target.group)
 
-  const rope = new Rope(ANCHOR, new THREE.Vector3(-12, -2, 0), ANCHOR.distanceTo(new THREE.Vector3(SOCKET_X - TAIL, 0, 0)) * 1.3)
+  const rope = new Rope(ANCHOR, new THREE.Vector3(-12, -2, 0), ANCHOR.distanceTo(new THREE.Vector3(SX - TAIL, 0, 0)) * 1.3)
   group.add(rope.dots.points)
   const sparks = new Sparks(220)
   group.add(sparks.dots.points)
 
-  // The shock ring: dots on a circle in the socket's face plane, racing outwards.
+  // The shock ring: dots on a circle in the port's plane, racing outwards.
   const shock = dots(SHOCK)
   group.add(shock.points)
   let shockAt = -10
 
-  // The screen: text drawn in a canvas, one dot per lit cell, on the socket's front.
+  // The status screen above the target: text drawn in a canvas, one dot per lit cell.
+  const SCREEN = { w: 240, h: 64, step: 2, x: SX + 2, y: target.top + 4.2, width: 12 }
   const cols = SCREEN.w / SCREEN.step
   const rows = SCREEN.h / SCREEN.step
   const screen = dots(cols * rows)
-  const k = SCREEN.width / cols
+  const cell = SCREEN.width / cols
   for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) screen.position.setXYZ(r * cols + c, SCREEN.x + c * k, SCREEN.y - r * k, 6.6)
+    for (let c = 0; c < cols; c++) screen.position.setXYZ(r * cols + c, SCREEN.x + c * cell, SCREEN.y - r * cell, 0)
   }
   group.add(screen.points)
   const canvas = document.createElement('canvas')
@@ -69,22 +72,26 @@ export async function mount(host: HTMLElement) {
     screen.tone.needsUpdate = true
   }
 
+  const sky = backdrop()
+  const morphing = [plugDots, screen, ...target.parts, ...sky.morphing]
+  const fading = [rope.dots, sparks.dots, shock, ...sky.fading]
+
   let idleX = -14
   const s = stage(host, (s) => {
     const narrow = s.width < 640
     idleX = narrow ? -6 : -14
-    group.position.set(narrow ? -3 : 5, -2, 0)
-    const ppu = fit(s, narrow ? 42 : 66, 32, 0.98)
+    group.position.set(narrow ? -10 : -6, -3, 0)
+    const ppu = fit(s, narrow ? 56 : 84, 36, 0.98)
     plugDots.size(ppu * 0.24, s)
-    socketDots.size(ppu * 0.24, s)
+    for (const d of target.parts) d.size(ppu * 0.22, s)
     rope.dots.size(ppu * 0.3, s)
     sparks.dots.size(ppu * 0.5, s)
     shock.size(ppu * 0.4, s)
-    screen.size(ppu * k * 0.9, s)
+    screen.size(ppu * cell * 0.9, s)
+    sky.size(ppu, s)
   })
-  s.scene.add(group)
+  s.scene.add(sky.group, group)
   load(plugDots, plugShape.pts, s)
-  load(socketDots, socket.pts, s)
   const a = accent(s)
   const b = ink(s)
   rope.paint(b)
@@ -116,28 +123,29 @@ export async function mount(host: HTMLElement) {
   let state: 'free' | 'plugged' = 'free'
   const at = new THREE.Vector3(-14, -2, 0)
   const vel = new THREE.Vector3()
-  const socketEntry = new THREE.Vector3(SOCKET_X, 0, 0)
+  const socketEntry = new THREE.Vector3(SX, 0, 0)
   let flying = false
   let releasedAt = -10 // the magnet rests a moment after a pull, or the plug would snap straight back
   let clock = 0
   let heat = 0
   let cableLit = false
+  let introAt = -1
 
   const connect = () => {
     state = 'plugged'
     flying = false
     tones(plugDots, plugShape.led, plugShape.leds, 1)
-    tones(socketDots, socket.ring, socket.rings, 1)
-    sparks.burst(SOCKET_X, 0, 160, 1.4)
+    sparks.burst(SX, 0, 160, 1.4)
     shockAt = clock
+    target.connect(clock)
     show('✓ loaded')
   }
   const release = () => {
     state = 'free'
-    releasedAt = performance.now() / 1000
+    releasedAt = clock
     vel.set(-28, 6, 0)
     tones(plugDots, plugShape.led, plugShape.leds, 0.25)
-    tones(socketDots, socket.ring, socket.rings, 0.18)
+    target.release(clock)
     show('❯ waiting')
   }
   host.addEventListener('click', () => {
@@ -149,26 +157,35 @@ export async function mount(host: HTMLElement) {
     flying = true
   })
 
-  const target = new THREE.Vector3()
+  const target3 = new THREE.Vector3()
   const warm = new THREE.Color()
   const redraw = run(s, (t, dt) => {
     clock = t
-    group.rotation.y += (0.42 + (s.pointer.inside ? s.pointer.x : 0) * 0.12 - group.rotation.y) * 0.05
-    group.rotation.x += ((s.pointer.inside ? -s.pointer.y : 0) * 0.08 - group.rotation.x) * 0.05
+    if (introAt < 0) introAt = t
+    const intro = reduced ? 1 : Math.min(1, (t - introAt) / INTRO)
+    for (const d of morphing) d.material.uniforms.uIntro.value = intro
+    for (const d of fading) d.material.uniforms.uFade.value = THREE.MathUtils.smoothstep(intro, 0.55, 1)
 
-    if (state === 'plugged') target.copy(socketEntry)
-    else if (flying) target.set(SOCKET_X - 3, 0, 0)
-    else if (s.pointer.inside) {
+    const px = s.pointer.inside ? s.pointer.x : 0
+    const py = s.pointer.inside ? s.pointer.y : 0
+    group.rotation.y += (0.3 + px * 0.12 - group.rotation.y) * 0.05
+    group.rotation.x += (-py * 0.08 - group.rotation.x) * 0.05
+    sky.step(t, dt, px, py)
+    target.step(t, dt)
+
+    if (state === 'plugged') target3.copy(socketEntry)
+    else if (flying) target3.set(SX - 3, 0, 0)
+    else if (s.pointer.inside && intro >= 1) {
       const m = s.hit(group)
-      if (m) target.set(Math.min(m.x, SOCKET_X - 3.2), THREE.MathUtils.clamp(m.y, -12, 12), 0)
-    } else target.set(idleX, -2 + Math.sin(t * 1.3) * 1.2, 0)
+      if (m) target3.set(Math.min(m.x, SX - 3.2), THREE.MathUtils.clamp(m.y, -12, 12), 0)
+    } else target3.set(idleX, -2 + Math.sin(t * 1.3) * 1.2, 0)
 
     if (dt > 0) {
-      vel.addScaledVector(target.clone().sub(at), (state === 'plugged' ? 220 : flying ? 150 : 60) * dt)
+      vel.addScaledVector(target3.clone().sub(at), (state === 'plugged' ? 220 : flying ? 150 : 60) * dt)
       vel.multiplyScalar(Math.max(0, 1 - 8 * dt))
       at.addScaledVector(vel, dt)
-      if (state === 'free' && t - releasedAt > 0.8 && Math.hypot(at.x - (SOCKET_X - 3), at.y) < (flying ? 0.8 : 2.2)) {
-        at.set(SOCKET_X - 3, 0, 0)
+      if (state === 'free' && t - releasedAt > 0.8 && Math.hypot(at.x - (SX - 3), at.y) < (flying ? 0.8 : 2.2)) {
+        at.set(SX - 3, 0, 0)
         connect()
       }
     }
@@ -176,8 +193,8 @@ export async function mount(host: HTMLElement) {
     plug.rotation.z = state === 'plugged' ? 0 : THREE.MathUtils.clamp(-vel.y * 0.012, -0.5, 0.5)
     plug.rotation.y = state === 'plugged' ? 0 : THREE.MathUtils.clamp(vel.x * 0.004, -0.2, 0.2)
 
-    // The plug warms towards the accent as it nears the socket.
-    const near = state === 'plugged' ? 0.35 : THREE.MathUtils.clamp(1 - Math.hypot(at.x - SOCKET_X, at.y) / 18, 0, 1)
+    // The plug warms towards the accent as it nears the port.
+    const near = state === 'plugged' ? 0.35 : THREE.MathUtils.clamp(1 - Math.hypot(at.x - SX, at.y) / 18, 0, 1)
     if (Math.abs(near - heat) > 0.01) {
       heat = near
       warm.copy(b).lerp(a, heat * 0.85)
@@ -188,7 +205,7 @@ export async function mount(host: HTMLElement) {
     // The scene shakes for a moment after the plug goes in.
     const since = t - shockAt
     const shake = since < 0.35 && !reduced ? (1 - since / 0.35) * 0.6 : 0
-    group.position.y = -2 + (Math.random() - 0.5) * shake
+    group.position.y = -3 + (Math.random() - 0.5) * shake
     plug.position.x += (Math.random() - 0.5) * shake
 
     rope.step(dt, new THREE.Vector3(-TAIL, 0, 0).applyEuler(plug.rotation).add(at))
@@ -214,13 +231,13 @@ export async function mount(host: HTMLElement) {
     for (let i = 0; i < SHOCK; i++) {
       const ang = (i / SHOCK) * Math.PI * 2
       const r = 3.6 + since * 26
-      shock.position.setXYZ(i, SOCKET_X - 0.3, Math.sin(ang) * r, Math.cos(ang) * r)
+      shock.position.setXYZ(i, SX - 0.3, Math.sin(ang) * r, Math.cos(ang) * r)
       shock.tone.setX(i, since < 0.7 ? 1 - since / 0.7 : 0)
     }
     shock.flush()
 
-    const scan = scanY(t, 14, -14, 5)
-    socketDots.material.uniforms.uScan.value = scan
+    const scan = scanY(t, 16, -16, 5)
+    for (const d of target.parts) d.material.uniforms.uScan.value = scan
     plugDots.material.uniforms.uScan.value = scan - at.y
   })
   if (reduced) redraw()

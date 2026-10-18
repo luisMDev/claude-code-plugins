@@ -124,18 +124,37 @@ const vertex = /* glsl */ `
   uniform float uDist;
   uniform float uPx;
   uniform float uScan;
+  uniform float uIntro;
+  uniform float uFade;
   attribute vec3 aColor;
   attribute float aTone;
   varying vec3 vColor;
   varying float vTone;
 
+  float hash(vec3 p) {
+    p = fract(p * 0.3183099 + 0.1) * 17.0;
+    return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+  }
+
   void main() {
-    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    vec3 p = position;
+    float k = 1.0;
+    // The intro: every dot swirls in from a scattered cloud to its place.
+    if (uIntro < 1.0) {
+      vec3 h = vec3(hash(position), hash(position + 7.1), hash(position + 13.7));
+      vec3 cloud = (h - 0.5) * vec3(140.0, 80.0, 90.0) + vec3(0.0, 0.0, -25.0);
+      float delay = h.x * 0.45;
+      k = smoothstep(delay, delay + 0.55, uIntro);
+      float a = (1.0 - k) * 2.6;
+      cloud.xz = mat2(cos(a), -sin(a), sin(a), cos(a)) * cloud.xz;
+      p = mix(cloud, position, k);
+    }
+    vec4 mv = modelViewMatrix * vec4(p, 1.0);
     gl_Position = projectionMatrix * mv;
     gl_PointSize = max(1.0, uSize * uPx * uDist / -mv.z);
     // A CRT scan line: a band of brighter dots sweeping down.
     float scan = exp(-pow((position.y - uScan) / 1.2, 2.0));
-    vTone = clamp(aTone + scan * 0.55 * step(0.01, aTone), 0.0, 1.0);
+    vTone = clamp(aTone + scan * 0.55 * step(0.01, aTone), 0.0, 1.0) * uFade * mix(0.45, 1.0, k);
     vColor = aColor;
   }
 `
@@ -173,7 +192,7 @@ export function dots(count: number): Dots {
   geometry.setAttribute('aColor', color)
   geometry.setAttribute('aTone', tone)
   const material = new THREE.ShaderMaterial({
-    uniforms: { uSize: { value: 4 }, uDist: { value: 1 }, uPx: { value: 1 }, uScan: { value: 1e4 } },
+    uniforms: { uSize: { value: 4 }, uDist: { value: 1 }, uPx: { value: 1 }, uScan: { value: 1e4 }, uIntro: { value: 1 }, uFade: { value: 1 } },
     vertexShader: vertex,
     fragmentShader: fragment,
     transparent: true,

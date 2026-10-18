@@ -40,10 +40,9 @@ const title = 'claude-code-plugins'
       <header class="hero">
         <div class="stage" data-hero>
           <nav class="pick" aria-label="Header option">
-            <a href="?hero=plug" data-pick="plug">PLUG</a>
-            <a href="?hero=glow" data-pick="glow">GLOW</a>
-            <a href="?hero=strip" data-pick="strip">STRIP</a>
-            <a href="?hero=throw" data-pick="throw">THROW</a>
+            <a href="?hero=planet" data-pick="planet">PLANET</a>
+            <a href="?hero=brain" data-pick="brain">BRAIN</a>
+            <a href="?hero=hive" data-pick="hive">HIVE</a>
           </nav>
         </div>
         <h1 aria-label={title}>
@@ -147,18 +146,13 @@ const title = 'claude-code-plugins'
     <script>
       import '../scripts/terminal-fx'
 
-      // Plug header variants while we choose one: ?hero=plug|glow|strip|throw.
-      const heroes = {
-        plug: () => import('../scripts/heroes/plug'),
-        glow: () => import('../scripts/heroes/glow'),
-        strip: () => import('../scripts/heroes/strip'),
-        throw: () => import('../scripts/heroes/throw'),
-      }
+      // What the plug goes into, while we choose one: ?hero=planet|brain|hive.
+      const kinds = ['planet', 'brain', 'hive'] as const
       const host = document.querySelector<HTMLElement>('[data-hero]')
       const asked = new URLSearchParams(location.search).get('hero')
-      const choice = asked && asked in heroes ? (asked as keyof typeof heroes) : 'plug'
-      document.querySelector(`[data-pick="${choice}"]`)?.setAttribute('aria-current', 'true')
-      if (host) void heroes[choice]().then((m) => m.mount(host))
+      const kind = kinds.find((k) => k === asked) ?? 'planet'
+      document.querySelector(`[data-pick="${kind}"]`)?.setAttribute('aria-current', 'true')
+      if (host) void import('../scripts/heroes/scene').then((m) => m.mount(host, kind))
 
       for (const button of document.querySelectorAll<HTMLButtonElement>('[data-copy]')) {
         button.addEventListener('click', async () => {
