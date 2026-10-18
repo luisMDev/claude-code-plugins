@@ -1,0 +1,133 @@
+---
+// The footer: link columns over a three.js field of dots (scripts/space.ts),
+// fetched only when the footer is about to scroll into view.
+import { REPO, TITLE, plugins } from '../plugins'
+
+const github = `https://github.com/${REPO}`
+---
+
+<footer class="site-footer">
+  <div class="bar">
+    <div class="brand">
+      <span class="wm">{TITLE}</span>
+      <span class="muted">by LuismDev · not affiliated with Anthropic</span>
+    </div>
+    <nav aria-label="Plugins">
+      <h2>PLUGINS</h2>
+      <ul>
+        {
+          plugins.map((p) => (
+            <li>
+              <a href={`#${p.name}`} data-scramble>
+                {p.name}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+    <nav aria-label="Links">
+      <h2>LINKS</h2>
+      <ul>
+        <li><a href={github} data-scramble>GitHub↗</a></li>
+        <li><a href={`${github}/issues`} data-scramble>Issues↗</a></li>
+        <li><a href="https://code.claude.com/docs" data-scramble>Plugin docs↗</a></li>
+      </ul>
+    </nav>
+  </div>
+  <div class="space" data-space>
+    <p class="hint" aria-hidden="true">❯ click the void</p>
+  </div>
+</footer>
+
+<script>
+  const host = document.querySelector<HTMLElement>('[data-space]')
+  if (host) {
+    const near = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return
+        near.disconnect()
+        void import('../scripts/space').then(({ space }) => space(host))
+      },
+      { rootMargin: '600px 0px' },
+    )
+    near.observe(host)
+  }
+</script>
+
+<style>
+  .site-footer {
+    margin-top: var(--section);
+  }
+  .bar {
+    display: grid;
+    grid-template-columns: var(--rail) repeat(2, minmax(0, 1fr));
+    gap: var(--gap);
+    width: var(--wide);
+    margin: 0 auto;
+    padding: 48px 0 8px;
+    font-size: var(--small);
+  }
+  .brand {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .wm {
+    font-family: var(--font-title);
+    font-size: calc(18px * var(--title-k));
+    font-weight: var(--title-weight);
+  }
+  h2 {
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin: 0 0 12px;
+  }
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  li + li {
+    margin-top: 6px;
+  }
+  a {
+    text-decoration: none;
+  }
+  a:hover {
+    color: var(--accent);
+  }
+  .muted {
+    color: var(--muted);
+  }
+  .space {
+    position: relative;
+    height: clamp(380px, 70vh, 640px);
+    cursor: crosshair;
+    overflow: hidden;
+  }
+  .space :global(canvas) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .hint {
+    position: absolute;
+    left: 16px;
+    bottom: 12px;
+    margin: 0;
+    font-size: 12px;
+    color: var(--muted);
+    pointer-events: none;
+  }
+  @media (max-width: 640px) {
+    .bar {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+    .brand {
+      grid-column: 1 / -1;
+    }
+  }
+</style>
