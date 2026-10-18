@@ -539,9 +539,18 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
     font-size: calc(32px * var(--title-k));
     line-height: 1.1;
   }
+  /* The plugin count: a square cell on the terminal's button fill. */
   sup {
-    margin-left: 2px;
+    display: inline-grid;
+    place-items: center;
+    width: 1.5em;
+    height: 1.5em;
+    margin-left: 0.35em;
+    font-size: 0.6em;
+    line-height: 1;
+    vertical-align: 0.45em;
     color: var(--accent);
+    background: var(--chip);
   }
 
   /* One plugin */
