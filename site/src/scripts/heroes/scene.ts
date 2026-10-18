@@ -3,11 +3,10 @@
 // footer's 9 px screen grid in grey with one accent. Everything swirls in on
 // load. The plug warms as it nears the port; plugging in shakes the scene,
 // sends a shock ring out, runs data pulses down the cable and lights the
-// planet, and the line under the scene types the status. Click to plug in or
-// pull out.
+// planet. Click to plug in or pull out.
 import { backdrop } from './backdrop'
 import { THREE, dots, fit, ink, reduced, run, scanY, stage } from './dots'
-import { Rope, Sparks, TAIL, accent, caption, load, plugPoints, tones } from './kit'
+import { Rope, Sparks, TAIL, accent, load, plugPoints, tones } from './kit'
 import { SX, planet } from './targets'
 
 const ANCHOR = new THREE.Vector3(-44, 17, 0)
@@ -62,9 +61,6 @@ export function mount(host: HTMLElement) {
   rope.paint(b)
   for (let i = 0; i < SHOCK; i++) shock.color.setXYZ(i, a.r, a.g, a.b)
 
-  const say = caption(host)
-  say('❯ plug it in')
-
   let state: 'free' | 'plugged' = 'free'
   const at = new THREE.Vector3(-14, -2, 0)
   const vel = new THREE.Vector3()
@@ -83,7 +79,6 @@ export function mount(host: HTMLElement) {
     sparks.burst(SX, 0, 160, 1.4)
     shockAt = clock
     target.connect()
-    say('✓ plugin loaded')
   }
   const release = () => {
     state = 'free'
@@ -91,7 +86,6 @@ export function mount(host: HTMLElement) {
     vel.set(-28, 6, 0)
     tones(plugDots, plugShape.led, plugShape.leds, 0.25)
     target.release()
-    say('❯ plug it in')
   }
   host.addEventListener('click', () => {
     if (state === 'plugged') return release()

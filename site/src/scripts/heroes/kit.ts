@@ -1,6 +1,6 @@
-// The plug header's parts: voxel boxes of dots, the plug, a verlet cable,
-// sparks and the caption that types itself.
-import { THREE, dots, ink, reduced, type Dots, type Stage } from './dots'
+// The plug header's parts: voxel boxes of dots, the plug, a verlet cable
+// and sparks.
+import { THREE, dots, ink, type Dots, type Stage } from './dots'
 
 export const PRONG = 2.6 // how far the prongs reach past the plug's face
 export const TAIL = 7.5 // from the plug's face back to where the cable enters
@@ -171,25 +171,5 @@ export class Sparks {
       this.dots.tone.setX(i, Math.max(0, spark.life / spark.max))
     })
     this.dots.flush()
-  }
-}
-
-/** A caption under the scene that types itself; returns the function that sets it. */
-export function caption(host: HTMLElement) {
-  const msg = document.createElement('p')
-  msg.className = 'hero-msg'
-  msg.setAttribute('aria-live', 'polite')
-  host.appendChild(msg)
-  let typing = 0
-  return (text: string) => {
-    const id = ++typing
-    if (reduced) return void (msg.textContent = text)
-    let i = 0
-    const tick = () => {
-      if (id !== typing) return
-      msg.textContent = text.slice(0, ++i)
-      if (i < text.length) setTimeout(tick, 32)
-    }
-    tick()
   }
 }

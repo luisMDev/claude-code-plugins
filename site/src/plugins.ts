@@ -16,6 +16,7 @@ const marketplace: { name: string; plugins: { name: string; source: string }[] }
   '.claude-plugin/marketplace.json',
 )
 
+export const TITLE = 'luismdev marketplace' // the site's name; the marketplace's id stays MARKETPLACE
 export const REPO = 'luisMDev/claude-code-plugins'
 export const MARKETPLACE = marketplace.name
 
