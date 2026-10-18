@@ -8,6 +8,21 @@ import { MARKETPLACE, REPO, plugins } from '../plugins'
 const github = `https://github.com/${REPO}`
 const underline = (text: string, char: string) => char.repeat(text.length)
 const title = 'claude-code-plugins'
+
+// What the install buttons copy: a prompt to paste into Claude Code, which runs the commands.
+const prompt = (names: string[]) => {
+  const one = names.length === 1
+  return [
+    `Install ${one ? 'this Claude Code plugin' : 'these Claude Code plugins'} from the ${MARKETPLACE} marketplace (github.com/${REPO}) by running:`,
+    '',
+    `claude plugin marketplace add ${REPO}`,
+    ...names.map((name) => `claude plugin install ${name}@${MARKETPLACE}`),
+    '',
+    `Then tell me to restart Claude Code so ${one ? 'it loads' : 'they load'}.`,
+  ].join('\n')
+}
+const everything = prompt(plugins.map((p) => p.name))
+const copied = 'Install prompt copied. Paste it into Claude Code.'
 ---
 
 <!doctype html>
@@ -47,10 +62,16 @@ const title = 'claude-code-plugins'
           Small plugins that put buttons above the Claude Code prompt. Each one answers in a side pane from a fork of
           the session, so the main thread never gets an extra turn.
         </p>
-        <div class="cmd">
-          <code>/plugin marketplace add {REPO}</code>
-          <button type="button" class="copy" data-copy={`/plugin marketplace add ${REPO}`}>COPY</button>
+        <div class="cta">
+          <button type="button" class="primary" data-copy={everything} data-toast={copied} data-done="Copied">
+            <span>Copy install prompt</span>
+          </button>
+          <span class="muted">Paste it into Claude Code. It installs every plugin here.</span>
         </div>
+        <details>
+          <summary>What it copies</summary>
+          <pre>{everything}</pre>
+        </details>
       </header>
 
       <section id="plugins">
@@ -84,12 +105,18 @@ const title = 'claude-code-plugins'
                   </ul>
                 </dd>
                 <dt>INSTALL</dt>
-                <dd class="cmd">
-                  <code>
-                    /plugin install {p.name}@{MARKETPLACE}
-                  </code>
-                  <button type="button" class="copy" data-copy={`/plugin install ${p.name}@${MARKETPLACE}`}>
-                    COPY
+                <dd>
+                  <button
+                    type="button"
+                    class="install"
+                    data-copy={prompt([p.name])}
+                    data-toast={`Install prompt for ${p.name} copied. Paste it into Claude Code.`}
+                  >
+                    <svg viewBox="0 0 8 7" aria-hidden="true">
+                      <path class="arrow" d="M3 0h2v3h-2zM1 3h6v1h-6zM2 4h4v1h-4zM3 5h2v1h-2z" />
+                      <path class="check" d="M6 1h2v1h-2zM5 2h2v1h-2zM0 3h2v1h-2zM4 3h2v1h-2zM1 4h4v1h-4zM2 5h2v1h-2z" />
+                    </svg>
+                    <span>install</span>
                   </button>
                 </dd>
               </dl>
@@ -103,39 +130,28 @@ const title = 'claude-code-plugins'
 
       <section id="install">
         <h2>INSTALL</h2>
-        <ol>
-          <li>
-            In a terminal session, add the marketplace:
-            <div class="cmd">
-              <code>/plugin marketplace add {REPO}</code>
-              <button type="button" class="copy" data-copy={`/plugin marketplace add ${REPO}`}>COPY</button>
-            </div>
-          </li>
-          <li>
-            Install the plugins you want:
-            {
-              plugins.map((p) => (
-                <div class="cmd">
-                  <code>
-                    /plugin install {p.name}@{MARKETPLACE}
-                  </code>
-                  <button type="button" class="copy" data-copy={`/plugin install ${p.name}@${MARKETPLACE}`}>
-                    COPY
-                  </button>
-                </div>
-              ))
-            }
-          </li>
-          <li>
-            The buttons appear above the prompt; both plugins share one row. In the desktop app, click{' '}
-            <strong>+</strong> next to the prompt box, then <strong>Plugins → Add marketplace</strong> with{' '}
-            <code>{REPO}</code>.
-          </li>
-        </ol>
+        <p>
+          Copy the prompt and paste it into Claude Code: it adds this marketplace and installs every plugin. To pick one,
+          use the <span class="accent">install</span> button next to it.
+        </p>
+        <div class="cta">
+          <button type="button" class="primary" data-copy={everything} data-toast={copied} data-done="Copied">
+            <span>Copy install prompt</span>
+          </button>
+        </div>
+        <details>
+          <summary>What it copies</summary>
+          <pre>{everything}</pre>
+        </details>
+        <p class="muted">
+          In the desktop app: click <strong>+</strong> next to the prompt box, then{' '}
+          <strong>Plugins → Add marketplace</strong> with <code>{REPO}</code>.
+        </p>
       </section>
     </main>
 
     <Footer />
+    <div class="toast" role="status" data-toast-host></div>
 
     <script>
       import '../scripts/terminal-fx'
@@ -143,11 +159,25 @@ const title = 'claude-code-plugins'
       const host = document.querySelector<HTMLElement>('[data-hero]')
       if (host) void import('../scripts/heroes/scene').then((m) => m.mount(host))
 
+      // Copy buttons: copy the prompt, flip to their done state, and say so in the toast.
+      const toast = document.querySelector<HTMLElement>('[data-toast-host]')
+      let hide = 0
       for (const button of document.querySelectorAll<HTMLButtonElement>('[data-copy]')) {
+        const label = button.querySelector('span')
+        const idle = label?.textContent ?? ''
         button.addEventListener('click', async () => {
           await navigator.clipboard.writeText(button.dataset.copy ?? '')
-          button.textContent = 'COPIED'
-          setTimeout(() => (button.textContent = 'COPY'), 1500)
+          button.dataset.state = 'copied'
+          if (label && button.dataset.done) label.textContent = button.dataset.done
+          setTimeout(() => {
+            delete button.dataset.state
+            if (label) label.textContent = idle
+          }, 1800)
+          if (!toast) return
+          toast.textContent = button.dataset.toast ?? 'Copied.'
+          toast.classList.add('show')
+          clearTimeout(hide)
+          hide = window.setTimeout(() => toast.classList.remove('show'), 2600)
         })
       }
     </script>
@@ -272,36 +302,119 @@ const title = 'claude-code-plugins'
     color: var(--muted);
     margin: 0 0 28px;
   }
-  .cmd {
+  .cta {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 12px;
-    max-width: 100%;
-    margin: 8px 0;
-    padding: 8px 8px 8px 14px;
+    gap: 12px 16px;
+    margin: 0 0 14px;
+  }
+  .primary {
+    font: inherit;
+    font-size: 14px;
+    color: var(--bg);
+    background: var(--accent);
+    border: 0;
+    border-radius: 999px;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: filter 0.15s ease;
+  }
+  .primary:hover {
+    filter: brightness(1.1);
+  }
+  .primary[data-state='copied'] {
+    filter: brightness(0.9);
+  }
+  .cta .muted {
+    font-size: 12.5px;
+  }
+  details {
+    margin: 0 0 8px;
+    font-size: 12.5px;
+  }
+  summary {
+    cursor: pointer;
+    color: var(--muted);
+    list-style: none;
+  }
+  summary::-webkit-details-marker {
+    display: none;
+  }
+  summary::before {
+    content: '+ ';
+    color: var(--accent);
+  }
+  details[open] summary::before {
+    content: '− ';
+  }
+  pre {
+    margin: 10px 0 0;
+    padding: 12px 14px;
+    overflow-x: auto;
     background: var(--panel);
     border: 1px solid var(--line);
     border-radius: 8px;
+    color: var(--ink);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
   }
-  .cmd code {
-    flex: 1;
-    min-width: 0;
-    overflow-x: auto;
-    white-space: nowrap;
-  }
-  .copy {
+  .install {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     font: inherit;
-    font-size: 12px;
-    letter-spacing: 0.06em;
-    color: var(--bg);
-    background: var(--ink);
+    color: var(--accent);
+    background: none;
     border: 0;
-    border-radius: 6px;
-    padding: 4px 10px;
+    padding: 1px 0;
     cursor: pointer;
   }
-  .copy:hover {
-    background: var(--accent);
+  .install svg {
+    width: 14px;
+    height: 12px;
+    fill: currentColor;
+    shape-rendering: crispEdges;
+  }
+  .install .arrow {
+    transition: transform 0.15s ease;
+  }
+  .install:hover .arrow {
+    transform: translateY(1px);
+  }
+  .install .check,
+  .install[data-state='copied'] .arrow {
+    display: none;
+  }
+  .install[data-state='copied'] .check {
+    display: inline;
+  }
+  .accent {
+    color: var(--accent);
+  }
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    z-index: 20;
+    max-width: calc(100vw - 32px);
+    padding: 10px 18px;
+    border-radius: 999px;
+    background: var(--panel);
+    box-shadow:
+      0 0 0 1px var(--line),
+      0 12px 32px rgb(0 0 0 / 0.6);
+    font-size: 12.5px;
+    opacity: 0;
+    transform: translate(-50%, 8px);
+    transition:
+      opacity 0.2s ease,
+      transform 0.2s ease;
+    pointer-events: none;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translate(-50%, 0);
   }
   h2 {
     font-size: 13px;
@@ -349,9 +462,6 @@ const title = 'claude-code-plugins'
     margin: 0;
     min-width: 0;
   }
-  dd.cmd {
-    margin: -8px 0 0;
-  }
   dd ul {
     list-style: none;
     margin: 0;
@@ -361,11 +471,8 @@ const title = 'claude-code-plugins'
     margin-top: 6px;
   }
   dd code,
-  ol code {
+  #install code {
     color: var(--accent);
-  }
-  .cmd code {
-    color: var(--ink);
   }
   .muted {
     color: var(--muted);
@@ -376,12 +483,11 @@ const title = 'claude-code-plugins'
     color: var(--accent);
     text-decoration: none;
   }
-  ol {
-    padding-left: 1.4em;
-    margin: 0 0 64px;
+  #install {
+    margin-bottom: 64px;
   }
-  ol li + li {
-    margin-top: 20px;
+  #install p {
+    max-width: 64ch;
   }
   .cursor {
     display: inline-block;
@@ -413,9 +519,6 @@ const title = 'claude-code-plugins'
     }
     dd {
       margin-bottom: 12px;
-    }
-    dd.cmd {
-      margin: 0 0 12px;
     }
   }
 </style>
