@@ -1,6 +1,7 @@
 // The header's backdrop: stars in the terminal palette that twinkle, dithered
 // nebulae, a perspective grid rolling towards the camera and the odd shooting
 // star. It sits behind the scene and drifts against the pointer for depth.
+// Minimal keeps grey stars and the shooting stars only, like the footer.
 import { THREE, dots, type Dots, type Stage } from './dots'
 
 const PALETTE: [string, number][] = [
@@ -15,7 +16,8 @@ const TWINKLE = 260
 const METEORS = 3
 const TRAIL = 16
 
-function pick() {
+function pick(minimal: boolean) {
+  if (minimal) return new THREE.Color(Math.random() < 0.7 ? '#5e5d58' : '#8a8780')
   let r = Math.random()
   for (const [hex, w] of PALETTE) if ((r -= w) <= 0) return new THREE.Color(hex)
   return new THREE.Color(PALETTE[0][0])
@@ -27,14 +29,14 @@ function put(d: Dots, i: number, p: THREE.Vector3, c: THREE.Color, tone: number)
   d.tone.setX(i, tone)
 }
 
-export function backdrop() {
+export function backdrop(minimal = false) {
   const group = new THREE.Group()
 
   const stars = dots(STARS)
   const base = new Float32Array(STARS)
   for (let i = 0; i < STARS; i++) {
     base[i] = 0.12 + Math.random() ** 2 * 0.6
-    put(stars, i, new THREE.Vector3((Math.random() - 0.5) * 520, (Math.random() - 0.5) * 180, -60 - Math.random() * 160), pick(), base[i])
+    put(stars, i, new THREE.Vector3((Math.random() - 0.5) * 520, (Math.random() - 0.5) * 180, -60 - Math.random() * 160), pick(minimal), base[i])
   }
 
   // Nebulae: a few soft clouds, dithered by a cheap noise so they read as texture.
@@ -44,7 +46,7 @@ export function backdrop() {
     { at: new THREE.Vector3(10, 55, -210), r: 60, color: '#d97757' },
   ]
   const nebula: { p: THREE.Vector3; c: THREE.Color; tone: number }[] = []
-  for (const cloud of clouds) {
+  for (const cloud of minimal ? [] : clouds) {
     const c = new THREE.Color(cloud.color)
     for (let i = 0; i < 1400; i++) {
       const u = (Math.random() * 2 - 1) * cloud.r
@@ -61,7 +63,7 @@ export function backdrop() {
 
   // The grid: a floor of dots below the scene, its lines every 4 units.
   const gx: number[] = []
-  for (let x = -140; x <= 140; x += 4) gx.push(x)
+  if (!minimal) for (let x = -140; x <= 140; x += 4) gx.push(x)
   const gz: number[] = []
   for (let z = 12; z >= -190; z -= 4) gz.push(z)
   const grid = dots(gx.length * gz.length)
@@ -76,7 +78,7 @@ export function backdrop() {
   )
 
   const meteors = dots(METEORS * TRAIL)
-  const amber = new THREE.Color('#ffaf00')
+  const amber = new THREE.Color(minimal ? '#d97757' : '#ffaf00')
   for (let i = 0; i < METEORS * TRAIL; i++) put(meteors, i, new THREE.Vector3(), amber, 0)
   const flying = Array.from({ length: METEORS }, () => ({ p: new THREE.Vector3(), v: new THREE.Vector3(), life: 0 }))
   let nextMeteor = 1.5

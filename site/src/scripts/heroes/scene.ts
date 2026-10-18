@@ -1,19 +1,21 @@
-// The header: a voxel plug on a cable that follows the pointer, and a target
-// to plug it into (a planet, a brain or a hive mind), over a backdrop of
-// coloured stars, nebulae and a rolling grid. Everything swirls in on load.
+// The header: a voxel plug on a cable that follows the pointer, and a planet
+// to plug it into, over a backdrop of stars. Everything swirls in on load.
 // The plug warms as it nears the port; plugging in shakes the scene, sends a
-// shock ring out, runs data pulses down the cable and wakes the target; a dot
-// screen above the target types the status. Click to plug in or pull out.
+// shock ring out, runs data pulses down the cable and lights the planet.
+// Click to plug in or pull out. "colour" adds nebulae, a rolling grid and a
+// dot screen that types the status; "minimal" snaps every dot to the
+// footer's 9 px grid, in grey with one accent, and types the status below.
 import { backdrop } from './backdrop'
 import { THREE, dots, fit, ink, reduced, run, scanY, stage } from './dots'
 import { Rope, Sparks, TAIL, accent, caption, load, plugPoints, tones } from './kit'
-import { SX, TARGETS, type TargetKind } from './targets'
+import { SX, planet, type Style } from './targets'
 
 const ANCHOR = new THREE.Vector3(-44, 17, 0)
 const SHOCK = 90
 const INTRO = 2.2 // seconds for the swirl-in
 
-export async function mount(host: HTMLElement, kind: TargetKind) {
+export async function mount(host: HTMLElement, style: Style) {
+  const minimal = style === 'minimal'
   await document.fonts.load('700 26px "Geist Mono"')
   const group = new THREE.Group()
   group.rotation.y = 0.3
@@ -24,7 +26,7 @@ export async function mount(host: HTMLElement, kind: TargetKind) {
   plug.add(plugDots.points)
   group.add(plug)
 
-  const target = TARGETS[kind]()
+  const target = planet(style)
   group.add(target.group)
 
   const rope = new Rope(ANCHOR, new THREE.Vector3(-12, -2, 0), ANCHOR.distanceTo(new THREE.Vector3(SX - TAIL, 0, 0)) * 1.3)
@@ -46,7 +48,7 @@ export async function mount(host: HTMLElement, kind: TargetKind) {
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) screen.position.setXYZ(r * cols + c, SCREEN.x + c * cell, SCREEN.y - r * cell, 0)
   }
-  group.add(screen.points)
+  if (!minimal) group.add(screen.points)
   const canvas = document.createElement('canvas')
   canvas.width = SCREEN.w
   canvas.height = SCREEN.h
@@ -72,7 +74,7 @@ export async function mount(host: HTMLElement, kind: TargetKind) {
     screen.tone.needsUpdate = true
   }
 
-  const sky = backdrop()
+  const sky = backdrop(minimal)
   const morphing = [plugDots, screen, ...target.parts, ...sky.morphing]
   const fading = [rope.dots, sparks.dots, shock, ...sky.fading]
 
@@ -89,6 +91,7 @@ export async function mount(host: HTMLElement, kind: TargetKind) {
     shock.size(ppu * 0.4, s)
     screen.size(ppu * cell * 0.9, s)
     sky.size(ppu, s)
+    if (minimal) for (const d of [...morphing, ...fading]) d.snap(9, s)
   })
   s.scene.add(sky.group, group)
   load(plugDots, plugShape.pts, s)
@@ -99,8 +102,9 @@ export async function mount(host: HTMLElement, kind: TargetKind) {
   for (let i = 0; i < cols * rows; i++) screen.color.setXYZ(i, a.r, a.g, a.b)
   screen.flush()
 
-  // The status types on the screen; a hidden live region reads it out.
-  const say = caption(host, true)
+  // Colour types the status on the screen, read out by a hidden live region;
+  // minimal types it under the scene.
+  const say = caption(host, !minimal)
   let typing = 0
   const show = (text: string) => {
     say(text)
@@ -109,16 +113,17 @@ export async function mount(host: HTMLElement, kind: TargetKind) {
     const tick = () => {
       if (id !== typing) return
       screenText = text.slice(0, i)
-      paintScreen()
+      if (!minimal) paintScreen()
       if (i++ < text.length) setTimeout(tick, 45)
     }
     tick()
   }
-  show('❯ waiting')
-  setInterval(() => {
-    cursor = !cursor
-    paintScreen()
-  }, 530)
+  show(minimal ? '❯ plug it in' : '❯ waiting')
+  if (!minimal)
+    setInterval(() => {
+      cursor = !cursor
+      paintScreen()
+    }, 530)
 
   let state: 'free' | 'plugged' = 'free'
   const at = new THREE.Vector3(-14, -2, 0)
@@ -138,7 +143,7 @@ export async function mount(host: HTMLElement, kind: TargetKind) {
     sparks.burst(SX, 0, 160, 1.4)
     shockAt = clock
     target.connect(clock)
-    show('✓ loaded')
+    show(minimal ? '✓ plugin loaded' : '✓ loaded')
   }
   const release = () => {
     state = 'free'
@@ -146,7 +151,7 @@ export async function mount(host: HTMLElement, kind: TargetKind) {
     vel.set(-28, 6, 0)
     tones(plugDots, plugShape.led, plugShape.leds, 0.25)
     target.release(clock)
-    show('❯ waiting')
+    show(minimal ? '❯ plug it in' : '❯ waiting')
   }
   host.addEventListener('click', () => {
     if (state === 'plugged') return release()

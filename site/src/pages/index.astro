@@ -40,9 +40,8 @@ const title = 'claude-code-plugins'
       <header class="hero">
         <div class="stage" data-hero>
           <nav class="pick" aria-label="Header option">
-            <a href="?hero=planet" data-pick="planet">PLANET</a>
-            <a href="?hero=brain" data-pick="brain">BRAIN</a>
-            <a href="?hero=hive" data-pick="hive">HIVE</a>
+            <a href="?hero=minimal" data-pick="minimal">MINIMAL</a>
+            <a href="?hero=colour" data-pick="colour">COLOUR</a>
           </nav>
         </div>
         <h1 aria-label={title}>
@@ -146,11 +145,11 @@ const title = 'claude-code-plugins'
     <script>
       import '../scripts/terminal-fx'
 
-      // What the plug goes into, while we choose one: ?hero=planet|brain|hive.
-      const kinds = ['planet', 'brain', 'hive'] as const
+      // The header's style, while we choose one: ?hero=minimal|colour.
+      const kinds = ['minimal', 'colour'] as const
       const host = document.querySelector<HTMLElement>('[data-hero]')
       const asked = new URLSearchParams(location.search).get('hero')
-      const kind = kinds.find((k) => k === asked) ?? 'planet'
+      const kind = kinds.find((k) => k === asked) ?? 'minimal'
       document.querySelector(`[data-pick="${kind}"]`)?.setAttribute('aria-current', 'true')
       if (host) void import('../scripts/heroes/scene').then((m) => m.mount(host, kind))
 

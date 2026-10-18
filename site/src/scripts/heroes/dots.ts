@@ -126,6 +126,8 @@ const vertex = /* glsl */ `
   uniform float uScan;
   uniform float uIntro;
   uniform float uFade;
+  uniform float uGrid;
+  uniform vec2 uRes;
   attribute vec3 aColor;
   attribute float aTone;
   varying vec3 vColor;
@@ -151,6 +153,12 @@ const vertex = /* glsl */ `
     }
     vec4 mv = modelViewMatrix * vec4(p, 1.0);
     gl_Position = projectionMatrix * mv;
+    // Snapped to a screen grid, like the footer's field, when uGrid is set.
+    if (uGrid > 0.0) {
+      vec2 px = (gl_Position.xy / gl_Position.w * 0.5 + 0.5) * uRes;
+      px = floor(px / uGrid) * uGrid + uGrid * 0.5;
+      gl_Position.xy = (px / uRes * 2.0 - 1.0) * gl_Position.w;
+    }
     gl_PointSize = max(1.0, uSize * uPx * uDist / -mv.z);
     // A CRT scan line: a band of brighter dots sweeping down.
     float scan = exp(-pow((position.y - uScan) / 1.2, 2.0));
@@ -178,6 +186,8 @@ export interface Dots {
   material: THREE.ShaderMaterial
   /** Sets the dot size in css px at the camera's distance. */
   size(px: number, s: Stage): void
+  /** Snaps every dot to a screen grid `cell` css px wide; 0 turns it off. */
+  snap(cell: number, s: Stage): void
   /** Marks every attribute for upload. */
   flush(): void
 }
@@ -192,7 +202,7 @@ export function dots(count: number): Dots {
   geometry.setAttribute('aColor', color)
   geometry.setAttribute('aTone', tone)
   const material = new THREE.ShaderMaterial({
-    uniforms: { uSize: { value: 4 }, uDist: { value: 1 }, uPx: { value: 1 }, uScan: { value: 1e4 }, uIntro: { value: 1 }, uFade: { value: 1 } },
+    uniforms: { uSize: { value: 4 }, uDist: { value: 1 }, uPx: { value: 1 }, uScan: { value: 1e4 }, uIntro: { value: 1 }, uFade: { value: 1 }, uGrid: { value: 0 }, uRes: { value: new THREE.Vector2(1, 1) } },
     vertexShader: vertex,
     fragmentShader: fragment,
     transparent: true,
@@ -210,6 +220,10 @@ export function dots(count: number): Dots {
       material.uniforms.uSize.value = px
       material.uniforms.uDist.value = s.camera.position.z
       material.uniforms.uPx.value = s.ratio
+    },
+    snap(cell, s) {
+      material.uniforms.uGrid.value = cell * s.ratio
+      material.uniforms.uRes.value.set(s.width * s.ratio, s.height * s.ratio)
     },
     flush() {
       position.needsUpdate = true
