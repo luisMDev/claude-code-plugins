@@ -24,8 +24,6 @@ const prompt = (names: string[]) => {
   ].join('\n')
 }
 const everything = prompt(plugins.map((p) => p.name))
-const skills = plugins.reduce((n, p) => n + p.skills.length, 0)
-const hooks = [...new Set(plugins.flatMap((p) => p.hooks))]
 const copied = 'Install prompt copied. Paste it into Claude Code.'
 ---
 
@@ -102,12 +100,6 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
             <pre>{everything}</pre>
           </details>
         </div>
-        <dl class="stats">
-          <div><dt>Plugins</dt><dd>{plugins.length}</dd></div>
-          <div><dt>Skills</dt><dd>{skills}</dd></div>
-          <div><dt>Hooks</dt><dd>{hooks.join(' ')}</dd></div>
-          <div><dt>Marketplace</dt><dd>{MARKETPLACE}</dd></div>
-        </dl>
       </div>
     </header>
 
@@ -253,7 +245,7 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
     --wide: min(1360px, calc(100vw - 32px));
     --rail: 280px;
     --gap: 56px;
-    --section: 96px;
+    --section: 144px;
     --small: 13px;
     --label: 11px;
     --chip: #262522; /* the fill of a button drawn in the terminal */
@@ -388,13 +380,13 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
     height: 100%;
   }
 
-  /* Intro: the title opposite the copy, facts in a ruled row */
+  /* Intro: the title opposite the copy */
   .intro {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 32px var(--gap);
     align-items: end;
-    padding-top: 72px;
+    padding-top: 96px;
   }
   h1 {
     margin: 0;
@@ -448,23 +440,6 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
   }
   .lead {
     color: var(--muted);
-  }
-  .stats {
-    grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    margin: 24px 0 0;
-  }
-  .stats div {
-    padding: 16px 0;
-  }
-  .stats div + div {
-    padding-left: 24px;
-    border-left: 1px solid var(--line);
-  }
-  .stats dd {
-    margin: 4px 0 0;
-    overflow-wrap: anywhere;
   }
 
   /* Labels: the one small uppercase style */
@@ -635,9 +610,6 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
     margin-top: auto;
   }
 
-  #install {
-    margin-bottom: var(--section);
-  }
 
   .toast {
     position: fixed;
@@ -678,13 +650,6 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
     .mod {
       grid-template-columns: minmax(0, 1fr);
       gap: 24px;
-    }
-    .stats {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    .stats div + div:nth-child(3) {
-      padding-left: 0;
-      border-left: 0;
     }
   }
 </style>
