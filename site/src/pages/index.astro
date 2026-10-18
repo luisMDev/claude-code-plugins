@@ -1,6 +1,16 @@
 ---
 import '@fontsource/geist-mono/400.css'
 import '@fontsource/geist-mono/700.css'
+// Font pairings to choose from (?font=dot|crt|pixel|type); only the chosen ones stay.
+import '@fontsource/doto/700.css'
+import '@fontsource/doto/900.css'
+import '@fontsource/vt323/400.css'
+import '@fontsource/ibm-plex-mono/400.css'
+import '@fontsource/ibm-plex-mono/700.css'
+import '@fontsource/silkscreen/400.css'
+import '@fontsource/jetbrains-mono/400.css'
+import '@fontsource/jetbrains-mono/700.css'
+import '@fontsource/space-mono/700.css'
 import Footer from '../components/Footer.astro'
 import Terminal from '../components/Terminal.astro'
 import { MARKETPLACE, REPO, TITLE, plugins } from '../plugins'
@@ -39,6 +49,9 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
     />
     <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}/favicon.svg`} />
     <script is:inline>
+      // The font pairing, before first paint: ?font=dot|crt|pixel|type.
+      document.documentElement.dataset.font =
+        ['dot', 'crt', 'pixel', 'type'].find((k) => k === new URLSearchParams(location.search).get('font')) ?? 'dot'
       // Before first paint, so the typed title and its rule start hidden rather than flash.
       if (!matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.classList.add('fx')
     </script>
@@ -199,9 +212,19 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
 
     <Footer />
     <div class="toast" role="status" data-toast-host></div>
+    <nav class="fonts" aria-label="Font pairing">
+      <a href="?font=dot" data-font-pick="dot">DOT</a>
+      <a href="?font=crt" data-font-pick="crt">CRT</a>
+      <a href="?font=pixel" data-font-pick="pixel">PIXEL</a>
+      <a href="?font=type" data-font-pick="type">TYPE</a>
+    </nav>
 
     <script>
       import '../scripts/terminal-fx'
+
+      document
+        .querySelector(`[data-font-pick="${document.documentElement.dataset.font}"]`)
+        ?.setAttribute('aria-current', 'true')
 
       const host = document.querySelector<HTMLElement>('[data-hero]')
       if (host) void import('../scripts/heroes/scene').then((m) => m.mount(host))
@@ -252,7 +275,36 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
     --section: 96px;
     --small: 13px;
     --label: 11px;
+    /* Type: titles and text get different faces; k scales titles to each face's size. */
+    --font-title: 'Geist Mono', ui-monospace, monospace;
+    --font-body: 'Geist Mono', ui-monospace, monospace;
+    --title-k: 1;
+    --title-weight: 700;
+    --title-lh: 1.05;
     color-scheme: dark;
+  }
+  :root[data-font='dot'] {
+    --font-title: 'Doto', ui-monospace, monospace;
+    --title-k: 1.08;
+    --title-weight: 900;
+  }
+  :root[data-font='crt'] {
+    --font-title: 'VT323', ui-monospace, monospace;
+    --font-body: 'IBM Plex Mono', ui-monospace, monospace;
+    --title-k: 1.3;
+    --title-weight: 400;
+    --title-lh: 0.78;
+  }
+  :root[data-font='pixel'] {
+    --font-title: 'Silkscreen', ui-monospace, monospace;
+    --font-body: 'JetBrains Mono', ui-monospace, monospace;
+    --title-k: 0.78;
+    --title-weight: 400;
+  }
+  :root[data-font='type'] {
+    --font-title: 'Space Mono', ui-monospace, monospace;
+    --title-k: 1;
+    --title-weight: 700;
   }
   * {
     box-sizing: border-box;
@@ -265,7 +317,7 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
     overflow-x: clip;
     background: var(--bg);
     color: var(--ink);
-    font: 15px/1.65 'Geist Mono', ui-monospace, monospace;
+    font: 15px/1.65 var(--font-body);
   }
   a {
     color: inherit;
@@ -275,6 +327,12 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
   }
   .fx [data-type]:not([data-text]) {
     visibility: hidden;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-title);
+    font-weight: var(--title-weight);
   }
 </style>
 
@@ -360,12 +418,12 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
   }
   h1 {
     margin: 0;
-    font-size: clamp(40px, 6vw, 80px);
-    line-height: 1.05;
+    font-size: calc(clamp(40px, 6vw, 80px) * var(--title-k));
+    line-height: var(--title-lh);
   }
   .name {
     display: block;
-    max-width: 12.5ch; /* one word a line, the cursor included */
+    max-width: 14ch; /* one word a line, the cursor included, in narrow faces too */
   }
   .rule {
     display: block;
@@ -535,8 +593,7 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
   }
   h2 {
     margin: 0;
-    font-size: 32px;
-    font-weight: 400;
+    font-size: calc(32px * var(--title-k));
     line-height: 1.1;
   }
   sup {
@@ -564,7 +621,7 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
   }
   h3 {
     margin: 0;
-    font-size: 24px;
+    font-size: calc(24px * var(--title-k));
     line-height: 1.2;
   }
   h3 a {
@@ -614,6 +671,29 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
     margin-bottom: var(--section);
   }
 
+  /* The font-pairing switcher, while we choose one. */
+  .fonts {
+    position: fixed;
+    left: 16px;
+    bottom: 16px;
+    z-index: 30;
+    display: flex;
+    gap: 4px;
+    font: 11px/1 'Geist Mono', monospace;
+  }
+  .fonts a {
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--bg);
+    color: var(--muted);
+    text-decoration: none;
+  }
+  .fonts a[aria-current] {
+    color: var(--bg);
+    background: var(--ink);
+    border-color: var(--ink);
+  }
   .toast {
     position: fixed;
     left: 50%;
