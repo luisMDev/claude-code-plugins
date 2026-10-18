@@ -1,6 +1,6 @@
-// Terminal touches: text that types itself, links that scramble on hover, and
-// the demo sessions that play when they come into view. The HTML carries the
-// final text, so without JS (or with reduced motion) the page reads the same.
+// Terminal touches: text that types itself and links that scramble on hover.
+// The HTML carries the final text, so without JS (or with reduced motion) the
+// page reads the same.
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
 const GLYPHS = '!<>-_\\/[]{}=+*^?#░▒'
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -27,17 +27,6 @@ function scramble(el: HTMLElement) {
   requestAnimationFrame(step)
 }
 
-// Lines of a demo session appear one after another; the prompt line types.
-async function play(term: HTMLElement) {
-  await wait(Math.max(0, 1700 - performance.now())) // let the title finish typing first
-  for (const line of term.querySelectorAll<HTMLElement>('[data-line]')) {
-    const typed = line.querySelector<HTMLElement>('[data-typed]')
-    line.classList.add('is-in')
-    if (typed) await type(typed, 28)
-    await wait(typed ? 260 : 380)
-  }
-}
-
 if (!reduced) {
   document.documentElement.classList.add('fx')
 
@@ -49,20 +38,5 @@ if (!reduced) {
   for (const el of document.querySelectorAll<HTMLElement>('[data-scramble]')) {
     const target = el.querySelector<HTMLElement>('[data-scramble-text]') ?? el
     el.addEventListener('mouseenter', () => scramble(target))
-  }
-
-  const seen = new IntersectionObserver(
-    (entries) => {
-      for (const entry of entries) {
-        if (!entry.isIntersecting) continue
-        seen.unobserve(entry.target)
-        void play(entry.target as HTMLElement)
-      }
-    },
-    { threshold: 0.4 },
-  )
-  for (const term of document.querySelectorAll<HTMLElement>('[data-term]')) {
-    for (const typed of term.querySelectorAll<HTMLElement>('[data-typed]')) typed.dataset.text = typed.textContent ?? ''
-    seen.observe(term)
   }
 }

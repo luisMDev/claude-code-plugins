@@ -98,8 +98,6 @@ const EXTRAS: Record<string, Pick<Plugin, 'hooks' | 'draws' | 'buttons'>> = {
           'The site builds; the deploy workflow is in place.',
           '## Pending',
           '- Enable GitHub Pages for the repo',
-          '',
-          '⇢ New session   starts claude --bg on this file',
         ],
       },
     ],
