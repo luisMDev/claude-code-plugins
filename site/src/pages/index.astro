@@ -22,6 +22,8 @@ const prompt = (names: string[]) => {
   ].join('\n')
 }
 const everything = prompt(plugins.map((p) => p.name))
+const skills = plugins.reduce((n, p) => n + p.skills.length, 0)
+const hooks = [...new Set(plugins.flatMap((p) => p.hooks))]
 const copied = 'Install prompt copied. Paste it into Claude Code.'
 ---
 
@@ -54,24 +56,41 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
     <main>
       <header class="hero">
         <div class="stage" data-hero></div>
-        <h1 aria-label={title}>
-          <span aria-hidden="true"><span data-type="75">{title}</span><span class="cursor"></span></span>
-          <span class="rule" aria-hidden="true">{underline(title, '=')}</span>
-        </h1>
-        <p class="lead">
-          Small plugins that put buttons above the Claude Code prompt. Each one answers in a side pane from a fork of
-          the session, so the main thread never gets an extra turn.
-        </p>
-        <div class="cta">
-          <button type="button" class="primary" data-copy={everything} data-toast={copied} data-done="Copied">
-            <span>Copy install prompt</span>
-          </button>
-          <span class="muted">Paste it into Claude Code. It installs every plugin here.</span>
+        <div class="intro" data-intro="a">
+          <nav class="pick" aria-label="Intro option">
+            <a href="?intro=a" data-pick="a">A</a>
+            <a href="?intro=b" data-pick="b">B</a>
+            <a href="?intro=c" data-pick="c">C</a>
+            <a href="?intro=d" data-pick="d">D</a>
+          </nav>
+          <p class="readme" aria-hidden="true"><span class="key">❯</span> cat README.md</p>
+          <h1 aria-label={title}>
+            <span aria-hidden="true"><span data-type="75">{title}</span><span class="cursor"></span></span>
+            <span class="rule" aria-hidden="true">{underline(title, '=')}</span>
+          </h1>
+          <div class="copy">
+            <p class="lead">
+              Small plugins that put buttons above the Claude Code prompt. Each one answers in a side pane from a fork
+              of the session, so the main thread never gets an extra turn.
+            </p>
+            <div class="cta">
+              <button type="button" class="primary" data-copy={everything} data-toast={copied} data-done="Copied">
+                <span>Copy install prompt</span>
+              </button>
+              <span class="muted">Paste it into Claude Code. It installs every plugin here.</span>
+            </div>
+            <details>
+              <summary>What it copies</summary>
+              <pre>{everything}</pre>
+            </details>
+          </div>
+          <ul class="stats">
+            <li><b>{plugins.length}</b> plugins</li>
+            <li><b>{skills}</b> skills</li>
+            <li><b>{hooks.join(' ')}</b> hooks</li>
+            <li><b>{MARKETPLACE}</b> marketplace</li>
+          </ul>
         </div>
-        <details>
-          <summary>What it copies</summary>
-          <pre>{everything}</pre>
-        </details>
       </header>
 
       <section id="plugins" class="mods">
@@ -174,6 +193,12 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
     <script>
       import '../scripts/terminal-fx'
 
+      // The intro's layout, while we choose one: ?intro=a|b|c|d.
+      const intro = document.querySelector<HTMLElement>('[data-intro]')
+      const layout = ['a', 'b', 'c', 'd'].find((k) => k === new URLSearchParams(location.search).get('intro')) ?? 'a'
+      if (intro) intro.dataset.intro = layout
+      document.querySelector(`[data-pick="${layout}"]`)?.setAttribute('aria-current', 'true')
+
       const host = document.querySelector<HTMLElement>('[data-hero]')
       if (host) void import('../scripts/heroes/scene').then((m) => m.mount(host))
 
@@ -216,6 +241,7 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
     --term-dim: #8a8780;
     --term-rule: #3a3a37;
     --space-dot: #5e5d58;
+    --wide: min(1360px, calc(100vw - 32px));
     color-scheme: dark;
   }
   * {
@@ -250,6 +276,9 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
     padding-inline: 16px;
   }
   nav {
+    max-width: none;
+    width: var(--wide);
+    padding-inline: 0;
     display: flex;
     flex-wrap: wrap;
     gap: 6px 24px;
@@ -267,7 +296,7 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
     color: var(--accent);
   }
   .hero {
-    padding-block: 0 48px;
+    padding-block: 0 72px;
   }
   .stage {
     position: relative;
@@ -294,6 +323,171 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
     color: var(--accent);
     white-space: nowrap;
     pointer-events: none;
+  }
+  /* The intro under the animated header, on the plugins' measure. */
+  .intro {
+    position: relative;
+    width: var(--wide);
+    margin-left: calc((100% - var(--wide)) / 2);
+  }
+  .pick {
+    position: absolute;
+    top: -34px;
+    right: 0;
+    z-index: 1;
+    display: flex;
+    gap: 4px;
+    width: auto;
+    padding: 0;
+    font-size: 11px;
+  }
+  .pick a {
+    padding: 3px 9px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--muted);
+  }
+  .pick a[aria-current] {
+    color: var(--bg);
+    background: var(--ink);
+    border-color: var(--ink);
+  }
+  .readme {
+    display: none;
+    margin: 0 0 20px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .copy {
+    max-width: 640px;
+  }
+  .stats {
+    display: none;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+  .stats b {
+    font-weight: 400;
+    color: var(--ink);
+  }
+
+  /* A: aligned. Left edge on the plugins' rail, a larger title. */
+  [data-intro='a'] h1 {
+    font-size: clamp(36px, 7vw, 84px);
+  }
+
+  /* B: centred under the scene, with a line of facts. */
+  [data-intro='b'] {
+    text-align: center;
+  }
+  [data-intro='b'] .copy {
+    margin-inline: auto;
+  }
+  [data-intro='b'] .lead {
+    margin-inline: auto;
+  }
+  [data-intro='b'] .cta {
+    justify-content: center;
+  }
+  [data-intro='b'] .stats {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px 22px;
+    margin-top: 28px;
+  }
+  [data-intro='b'] .stats li + li::before {
+    content: '·';
+    margin-right: 22px;
+    color: var(--line);
+  }
+
+  /* C: two columns, the title opposite the copy, facts in a ruled row. */
+  [data-intro='c'] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: 'title copy' 'stats stats';
+    gap: 32px 56px;
+    align-items: end;
+  }
+  [data-intro='c'] h1 {
+    grid-area: title;
+    font-size: clamp(36px, 5.6vw, 76px);
+    margin: 0;
+  }
+  [data-intro='c'] .copy {
+    grid-area: copy;
+  }
+  [data-intro='c'] .lead {
+    margin-bottom: 20px;
+  }
+  [data-intro='c'] .stats {
+    grid-area: stats;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-block: 1px solid var(--line);
+  }
+  [data-intro='c'] .stats li {
+    padding: 14px 0;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 4px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-size: 11px;
+  }
+  [data-intro='c'] .stats li + li {
+    padding-left: 20px;
+    border-left: 1px solid var(--line);
+  }
+  [data-intro='c'] .stats b {
+    font-size: 15px;
+    text-transform: none;
+    letter-spacing: 0;
+    overflow-wrap: anywhere;
+  }
+
+  /* D: the intro as a README open in a terminal, a status bar at its foot. */
+  [data-intro='d'] {
+    padding: 28px 32px 0;
+    background: var(--term-bg);
+    border: 1px solid var(--term-rule);
+    border-radius: 10px;
+  }
+  [data-intro='d'] .readme {
+    display: block;
+  }
+  [data-intro='d'] .stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 28px;
+    margin: 28px -32px 0;
+    padding: 10px 32px;
+    border-top: 1px solid var(--term-rule);
+    font-size: 12px;
+  }
+  @media (max-width: 820px) {
+    [data-intro='c'] {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-areas: 'title' 'copy' 'stats';
+    }
+    [data-intro='c'] .stats {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    [data-intro='c'] .stats li:nth-child(3) {
+      padding-left: 0;
+      border-left: 0;
+    }
+    [data-intro='d'] {
+      padding: 22px 18px 0;
+    }
+    [data-intro='d'] .stats {
+      margin-inline: -18px;
+      padding-inline: 18px;
+    }
   }
   h1 {
     font-size: clamp(28px, 7vw, 52px);
@@ -447,7 +641,6 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
     margin-left: 2px;
   }
   .mods {
-    --wide: min(1360px, calc(100vw - 32px));
     display: grid;
     grid-template-columns: 280px minmax(0, 1fr);
     gap: 56px;
