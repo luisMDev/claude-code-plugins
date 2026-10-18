@@ -190,10 +190,6 @@ export function space(host: HTMLElement) {
     shared.uAccent.value.set(style.getPropertyValue('--accent').trim() || '#d97757')
   }
   colors()
-  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-    colors()
-    draw(performance.now())
-  })
 
   const resize = () => {
     const ratio = Math.min(2, devicePixelRatio || 1)

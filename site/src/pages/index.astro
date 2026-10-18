@@ -41,11 +41,9 @@ const title = 'claude-code-plugins'
         <div class="stage" data-hero>
           <nav class="pick" aria-label="Header option">
             <a href="?hero=plug" data-pick="plug">PLUG</a>
-            <a href="?hero=led" data-pick="led">LED</a>
-            <a href="?hero=term" data-pick="term">TERM</a>
-            <a href="?hero=morph" data-pick="morph">MORPH</a>
-            <a href="?hero=circuit" data-pick="circuit">CIRCUIT</a>
-            <a href="?hero=orbit" data-pick="orbit">ORBIT</a>
+            <a href="?hero=glow" data-pick="glow">GLOW</a>
+            <a href="?hero=strip" data-pick="strip">STRIP</a>
+            <a href="?hero=throw" data-pick="throw">THROW</a>
           </nav>
         </div>
         <h1 aria-label={title}>
@@ -149,20 +147,17 @@ const title = 'claude-code-plugins'
     <script>
       import '../scripts/terminal-fx'
 
-      // Header options while we choose one: ?hero=plug|led|term|morph|circuit|orbit.
+      // Plug header variants while we choose one: ?hero=plug|glow|strip|throw.
       const heroes = {
         plug: () => import('../scripts/heroes/plug'),
-        led: () => import('../scripts/heroes/led'),
-        term: () => import('../scripts/heroes/term'),
-        morph: () => import('../scripts/heroes/morph'),
-        circuit: () => import('../scripts/heroes/circuit'),
-        orbit: () => import('../scripts/heroes/orbit'),
+        glow: () => import('../scripts/heroes/glow'),
+        strip: () => import('../scripts/heroes/strip'),
+        throw: () => import('../scripts/heroes/throw'),
       }
       const host = document.querySelector<HTMLElement>('[data-hero]')
       const asked = new URLSearchParams(location.search).get('hero')
       const choice = asked && asked in heroes ? (asked as keyof typeof heroes) : 'plug'
       document.querySelector(`[data-pick="${choice}"]`)?.setAttribute('aria-current', 'true')
-      document.documentElement.dataset.heroChoice = choice
       if (host) void heroes[choice]().then((m) => m.mount(host))
 
       for (const button of document.querySelectorAll<HTMLButtonElement>('[data-copy]')) {
@@ -177,31 +172,27 @@ const title = 'claude-code-plugins'
 </html>
 
 <style is:global>
+  /* The site is dark only. */
   :root {
-    --bg: #faf9f5;
-    --ink: #141413;
-    --muted: #73726b;
-    --line: #dedcd3;
-    --panel: #f1efe8;
-    --accent: #c15f3c;
+    --bg: #141413;
+    --ink: #ececec;
+    --muted: #9b9b9b;
+    --line: #2e2d2a;
+    --panel: #1e1d1b;
+    --accent: #d97757;
     --term-bg: #1a1a18;
     --term-ink: #ececec;
     --term-dim: #8a8780;
     --term-rule: #3a3a37;
-    --space-dot: #a3a198;
-    color-scheme: light;
+    --space-dot: #5e5d58;
+    color-scheme: dark;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #141413;
-      --ink: #ececec;
-      --muted: #9b9b9b;
-      --line: #2e2d2a;
-      --panel: #1e1d1b;
-      --accent: #d97757;
-      --space-dot: #5e5d58;
-      color-scheme: dark;
-    }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
   }
   * {
     box-sizing: border-box;
@@ -325,14 +316,6 @@ const title = 'claude-code-plugins'
     font-size: inherit;
     letter-spacing: 0;
     line-height: 0.6;
-  }
-  /* The LED header already spells the name; keep the heading for screen readers only. */
-  :global([data-hero-choice='led']) h1 {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
   }
   .lead {
     max-width: 60ch;

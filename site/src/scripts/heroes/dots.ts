@@ -206,43 +206,7 @@ export function scanY(t: number, top: number, bottom: number, period = 5) {
   return k > 1 ? 1e4 : top + (bottom - top) * k
 }
 
-/** Dark-on-light or light-on-dark ink for the page's current scheme. */
+/** The page's ink colour. */
 export function ink(s: Stage) {
   return new THREE.Color(s.css('--ink') || '#141413')
-}
-
-/**
- * Lattice points of text drawn in Geist Mono: each `step` css px of the drawn
- * glyphs becomes one point, centred on the origin, y up. `line` is the index.
- */
-export async function sampleText(lines: string[], { px = 90, step = 6, weight = 700 } = {}) {
-  const font = `${weight} ${px}px "Geist Mono"`
-  await document.fonts.load(font)
-  const canvas = document.createElement('canvas')
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })!
-  ctx.font = font
-  const lineHeight = px * 1.15
-  const width = Math.ceil(Math.max(...lines.map((l) => ctx.measureText(l).width))) + 4
-  const height = Math.ceil(lineHeight * lines.length)
-  canvas.width = width
-  canvas.height = height
-  ctx.font = font
-  ctx.textBaseline = 'middle'
-  ctx.fillStyle = '#fff'
-  lines.forEach((l, i) => ctx.fillText(l, (width - ctx.measureText(l).width) / 2, lineHeight * (i + 0.5)))
-  const data = ctx.getImageData(0, 0, width, height).data
-  const out: { x: number; y: number; line: number; col: number }[] = []
-  for (let y = step / 2; y < height; y += step) {
-    for (let x = step / 2; x < width; x += step) {
-      if (data[(Math.floor(y) * width + Math.floor(x)) * 4 + 3] > 140) {
-        out.push({
-          x: (x - width / 2) / step,
-          y: (height / 2 - y) / step,
-          line: Math.floor(y / lineHeight),
-          col: x / width,
-        })
-      }
-    }
-  }
-  return { points: out, cols: width / step, rows: height / step }
 }
