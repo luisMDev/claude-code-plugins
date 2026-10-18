@@ -38,12 +38,7 @@ const title = 'claude-code-plugins'
 
     <main>
       <header class="hero">
-        <div class="stage" data-hero>
-          <nav class="pick" aria-label="Header option">
-            <a href="?hero=minimal" data-pick="minimal">MINIMAL</a>
-            <a href="?hero=colour" data-pick="colour">COLOUR</a>
-          </nav>
-        </div>
+        <div class="stage" data-hero></div>
         <h1 aria-label={title}>
           <span aria-hidden="true"><span data-type="75">{title}</span><span class="cursor"></span></span>
           <span class="rule" aria-hidden="true">{underline(title, '=')}</span>
@@ -145,13 +140,8 @@ const title = 'claude-code-plugins'
     <script>
       import '../scripts/terminal-fx'
 
-      // The header's style, while we choose one: ?hero=minimal|colour.
-      const kinds = ['minimal', 'colour'] as const
       const host = document.querySelector<HTMLElement>('[data-hero]')
-      const asked = new URLSearchParams(location.search).get('hero')
-      const kind = kinds.find((k) => k === asked) ?? 'minimal'
-      document.querySelector(`[data-pick="${kind}"]`)?.setAttribute('aria-current', 'true')
-      if (host) void import('../scripts/heroes/scene').then((m) => m.mount(host, kind))
+      if (host) void import('../scripts/heroes/scene').then((m) => m.mount(host))
 
       for (const button of document.querySelectorAll<HTMLButtonElement>('[data-copy]')) {
         button.addEventListener('click', async () => {
@@ -179,13 +169,6 @@ const title = 'claude-code-plugins'
     --term-rule: #3a3a37;
     --space-dot: #5e5d58;
     color-scheme: dark;
-  }
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
   }
   * {
     box-sizing: border-box;
@@ -263,32 +246,6 @@ const title = 'claude-code-plugins'
     color: var(--accent);
     white-space: nowrap;
     pointer-events: none;
-  }
-  .pick {
-    position: absolute;
-    top: 8px;
-    right: 16px;
-    z-index: 1;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 4px;
-    max-width: calc(100% - 32px);
-    margin: 0;
-    padding: 0;
-    font-size: 11px;
-  }
-  .pick a {
-    padding: 3px 8px;
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    color: var(--muted);
-    background: var(--bg);
-  }
-  .pick a[aria-current] {
-    color: var(--bg);
-    background: var(--ink);
-    border-color: var(--ink);
   }
   h1 {
     font-size: clamp(28px, 7vw, 52px);

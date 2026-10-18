@@ -175,9 +175,9 @@ export class Sparks {
 }
 
 /** A caption under the scene that types itself; returns the function that sets it. */
-export function caption(host: HTMLElement, hidden = false) {
+export function caption(host: HTMLElement) {
   const msg = document.createElement('p')
-  msg.className = hidden ? 'hero-msg sr-only' : 'hero-msg'
+  msg.className = 'hero-msg'
   msg.setAttribute('aria-live', 'polite')
   host.appendChild(msg)
   let typing = 0
