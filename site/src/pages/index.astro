@@ -119,8 +119,10 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
             Built on mods: small TypeScript hooks that draw their own buttons and panes in the terminal. Each window plays
             what the plugin really does.
           </p>
-          <a class="link" href={github}>SOURCE↗</a>
-          <a class="link" href="https://code.claude.com/docs">DOCS↗</a>
+          <div class="actions">
+            <a class="link" href={github}>SOURCE↗</a>
+            <a class="link" href="https://code.claude.com/docs">DOCS↗</a>
+          </div>
         </aside>
         <div>
           {
@@ -254,6 +256,7 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
     --section: 96px;
     --small: 13px;
     --label: 11px;
+    --chip: #262522; /* the fill of a button drawn in the terminal */
     /* Type: Silkscreen for titles, scaled down as its capitals run wide; JetBrains Mono for text. */
     --font-title: 'Silkscreen', ui-monospace, monospace;
     --font-body: 'JetBrains Mono', ui-monospace, monospace;
@@ -306,32 +309,53 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
   .key {
     color: var(--accent);
   }
-  .link {
+  /* Buttons drawn in the terminal: square blocks of colour, no border;
+     hovering inverts them, like reverse video. */
+  .link,
+  .install,
+  .top > a {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
+    font: inherit;
     font-size: var(--small);
     letter-spacing: 0.06em;
     color: var(--accent);
+    background: var(--chip);
+    border: 0;
+    border-radius: 0;
     text-decoration: none;
+    cursor: pointer;
   }
-  .link:hover {
-    text-decoration: underline;
+  .link:hover,
+  .install:hover,
+  .top > a:hover,
+  .link:focus-visible,
+  .install:focus-visible,
+  .top > a:focus-visible {
+    color: var(--bg);
+    background: var(--accent);
+    outline: none;
   }
 
   /* Top nav */
   .top {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px 24px;
+    align-items: center;
+    gap: 6px 8px;
     width: var(--wide);
     margin: 0 auto;
     padding-block: 20px;
     font-size: var(--small);
   }
-  .top a {
-    text-decoration: none;
-    letter-spacing: 0.04em;
+  .top > a {
+    color: var(--ink);
   }
-  .top a:hover {
-    color: var(--accent);
+  .top > a:hover .key,
+  .top > a:focus-visible .key {
+    color: var(--bg);
   }
   .social {
     display: flex;
@@ -458,27 +482,15 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
     color: var(--bg);
     background: var(--accent);
     border: 0;
-    border-radius: 999px;
-    padding: 10px 20px;
+    border-radius: 0;
+    padding: 9px 18px;
     cursor: pointer;
-    transition: filter 0.15s ease;
   }
-  .primary:hover {
-    filter: brightness(1.1);
-  }
+  .primary:hover,
+  .primary:focus-visible,
   .primary[data-state='copied'] {
-    filter: brightness(0.9);
-  }
-  .install {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font: inherit;
-    color: var(--accent);
-    background: none;
-    border: 0;
-    padding: 0;
-    cursor: pointer;
+    background: var(--ink);
+    outline: none;
   }
   .install svg {
     width: 14px;
@@ -619,7 +631,7 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
   .actions {
     display: flex;
     align-items: center;
-    gap: 24px;
+    gap: 8px;
     margin-top: auto;
   }
 
