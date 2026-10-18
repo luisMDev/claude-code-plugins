@@ -33,19 +33,24 @@ function capsule(label: string, color?: string) {
   return c
 }
 
+const TICK = 40 // ms between steps of the demo's clock
+
 // Time that only passes while the demo runs: paused or off screen, it stands still.
 async function wait(d: Demo, ms: number) {
   if (reduced) return
   for (let t = 0; t < ms; ) {
-    await new Promise((r) => setTimeout(r, 40))
-    if (d.running()) t += 40
+    await new Promise((r) => setTimeout(r, TICK))
+    if (d.running()) t += TICK
   }
 }
 
-async function type(d: Demo, target: HTMLElement, text: string, ms = 32) {
-  for (const ch of text) {
-    target.textContent += ch
-    await wait(d, ms)
+// Types `text` at `ms` per character; faster than a tick, several characters land per tick.
+async function type(d: Demo, target: HTMLElement, text: string, ms: number) {
+  const chars = [...text]
+  const step = Math.max(1, Math.round(TICK / ms))
+  for (let i = 0; i < chars.length; i += step) {
+    target.textContent += chars.slice(i, i + step).join('')
+    await wait(d, Math.max(ms, TICK))
   }
 }
 
@@ -69,7 +74,7 @@ async function press(d: Demo, target: HTMLElement) {
 
 async function prompt(d: Demo, text: string) {
   await wait(d, 400)
-  await type(d, d.input, text, 38)
+  await type(d, d.input, text, 12)
   await wait(d, 300)
   line(d, `❯ ${text}`, 'you')
   d.input.textContent = ''
@@ -98,8 +103,8 @@ async function answer(d: Demo, b: Button, loading: string, seconds: number) {
     const p = el('p', text.startsWith('## ') ? 'h' : '', '')
     if (text.startsWith('## ')) p.style.color = b.color
     body.append(p)
-    await type(d, p, text.replace(/^## /, '') || ' ', 7)
-    await wait(d, 90)
+    await type(d, p, text.replace(/^## /, '') || ' ', 3)
+    await wait(d, 40)
   }
   return { body, foot }
 }
