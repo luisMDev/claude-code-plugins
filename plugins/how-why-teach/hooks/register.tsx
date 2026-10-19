@@ -64,7 +64,8 @@ let seen: string | null = null
 
 // The engine keeps the last selection after a click takes its highlight down,
 // and no event says it did. So a selection counts until it is spent: answered
-// once, or dropped with the badge's ✕. The same text selected again stays spent.
+// once, dropped with the badge's ✕, or left unused for ten seconds. The same
+// text selected again stays spent.
 let spent: string | null = null
 
 const current = async ($: EngineInterface) => {
@@ -72,10 +73,18 @@ const current = async ($: EngineInterface) => {
   return text === spent ? null : text
 }
 
+// A selection the buttons have not used within this long is dropped.
+const SELECTION_TTL_MS = 10_000
+let seenAt = 0
+
 async function watchSelection($: EngineInterface) {
   const text = await current($)
-  if (text !== seen) {
+  const now = await $.clock.now()
+  if (text !== null && text === seen && now - seenAt >= SELECTION_TTL_MS) {
+    await spend($, text)
+  } else if (text !== seen) {
     seen = text
+    seenAt = now
     await update($, selected, () => text)
   }
 }

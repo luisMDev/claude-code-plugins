@@ -319,3 +319,37 @@ test('a command that ends makes the badge go at once, with no tick', async ($, o
   await $.command.run({ command: 'compact', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: true, columns: 120 } })
   expect(await badge()).toBeUndefined()
 })
+
+test('a selection left unused for ten seconds is dropped', async ($, on) => {
+  const time = mock.clock(on)
+  let selected: { text: string } | undefined = { text: 'one' }
+  on('ui.selection', () => ({ value: selected }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('fs.read', () => ({ value: SKILL }))
+  on('ui.open', () => ({ value: { isPlaced: true as const } }))
+  const forks: string[] = []
+  on('model.fork', (_, e) => {
+    forks.push(e.prompt)
+    return { value: { isAnswered: true as const, text: 'Answer.', usage: USAGE } }
+  })
+  engineBand(on)
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  const band = await $.ui.mount(BAND)
+  const badge = async () =>
+    (await band.findAll({ type: 'Text' })).map(t => t.text?.trim()).find(t => t?.startsWith('↳'))
+
+  await time.advance(500)
+  expect(await badge()).toBe('↳ “one”')
+  await time.advance(9000)
+  expect(await badge()).toBe('↳ “one”')
+  await time.advance(1000)
+  expect(await badge()).toBeUndefined()
+  await band.press({ key: 'how' })
+  await time.settle()
+  expect(forks[0]).toContain('to what we are doing in this session')
+
+  // Another selection gets its own ten seconds.
+  selected = { text: 'two' }
+  await time.advance(500)
+  expect(await badge()).toBe('↳ “two”')
+})
