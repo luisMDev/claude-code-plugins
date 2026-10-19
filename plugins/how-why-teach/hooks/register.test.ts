@@ -1,7 +1,7 @@
 import type { On } from 'claude-code'
 import { expect, mock, test } from 'claude-code/testing'
 
-import { PANE } from './register'
+import { isCommand, PANE } from './register'
 
 declare function setTimeout(callback: () => void, ms: number): unknown
 
@@ -291,4 +291,31 @@ test('a selection is spent once answered or dropped with ✕, until another is s
   await band.press({ key: 'why' })
   await time.settle()
   expect(forks[2]).toContain('to what we are doing in this session')
+})
+
+test('an edit leaves the selection to a /command only', () => {
+  const edit = (text: string, inputText: string) => ({ text, start: text.length, end: text.length, inputText })
+  expect(isCommand(edit('', '/'))).toBe(true)
+  expect(isCommand(edit('/h', 'o'))).toBe(true)
+  expect(isCommand(edit('', 'w'))).toBe(false)
+  expect(isCommand({ text: '/how', start: 0, end: 1, inputText: '' })).toBe(false)
+})
+
+test('a command that ends makes the badge go at once, with no tick', async ($, on) => {
+  const time = mock.clock(on)
+  let selected: { text: string } | undefined = { text: 'one' }
+  on('ui.selection', () => ({ value: selected }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('command.run', () => ({ text: 'ran' }))
+  engineBand(on)
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  const band = await $.ui.mount(BAND)
+  const badge = async () =>
+    (await band.findAll({ type: 'Text' })).map(t => t.text?.trim()).find(t => t?.startsWith('↳'))
+
+  await time.advance(500)
+  expect(await badge()).toBe('↳ “one”')
+  selected = undefined
+  await $.command.run({ command: 'compact', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: true, columns: 120 } })
+  expect(await badge()).toBeUndefined()
 })

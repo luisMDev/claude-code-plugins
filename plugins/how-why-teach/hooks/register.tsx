@@ -86,6 +86,10 @@ async function spend($: EngineInterface, text: string) {
   await update($, selected, () => null)
 }
 
+// Whether the prompt, once this edit lands, is a /command.
+export const isCommand = (e: { text: string; start: number; end: number; inputText: string }) =>
+  (e.text.slice(0, e.start) + e.inputText + e.text.slice(e.end)).startsWith('/')
+
 // A button's press: about the selection when one counts, which it spends.
 async function press($: EngineInterface, mode: Answer['mode'], title: string) {
   const text = await current($)
@@ -208,6 +212,29 @@ export const register: Register = on => {
   })
 
   // Shares the row of buttons with the mods beneath, the engine's band under it.
+  // A turn or a command that ends makes the engine forget the selection: the
+  // badge goes now rather than on the next tick.
+  on('turn.complete', async ($, e, next) => {
+    const result = await next(e)
+    await watchSelection($)
+    return result
+  })
+  on('command.run', async ($, e, next) => {
+    const result = await next(e)
+    await watchSelection($)
+    return result
+  })
+
+  // A key in the prompt takes the highlight down, so the selection no longer
+  // counts; a /command still reads it, as the engine means it to.
+  on('prompt.edit', async ($, e, next) => {
+    const result = await next(e)
+    if (seen !== null && !isCommand(e)) {
+      await spend($, seen)
+    }
+    return result
+  })
+
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey) {
       return next(e)
