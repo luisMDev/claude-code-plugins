@@ -12,6 +12,8 @@ const BUTTONS = [
 ] as const
 
 // The status line's capsule: rounded caps (Nerd Font) around a filled body.
+// Only the terminal gets the caps: other surfaces have no Nerd Font and draw
+// their own buttons, so they get the body alone.
 const PILL_BG = '#504945'
 const PILL_FG = '#ebdbb2'
 
@@ -132,14 +134,13 @@ function joinBand(
   )
 }
 
-function capsule(Text: ElementConstructor<TextProps>, label: string, color: string) {
-  return [
-    <Text color={PILL_BG}>{''}</Text>,
+function capsule(Text: ElementConstructor<TextProps>, label: string, color: string, caps: boolean) {
+  const body = (
     <Text backgroundColor={PILL_BG} color={color} bold>
       {` ${label} `}
-    </Text>,
-    <Text color={PILL_BG}>{''}</Text>,
-  ]
+    </Text>
+  )
+  return caps ? [<Text color={PILL_BG}>{''}</Text>, body, <Text color={PILL_BG}>{''}</Text>] : [body]
 }
 
 export const register: Register = on => {
@@ -150,6 +151,8 @@ export const register: Register = on => {
     }
 
     const { Box, Button, Text } = $.ui.resolve(e)
+
+    const caps = e.surface === 'terminal'
     const below = await next(e)
 
     return joinBand(
@@ -159,7 +162,7 @@ export const register: Register = on => {
         {BUTTONS.flatMap((b, i) => [
           ...(i > 0 ? [<Text key={`sep-${b.key}`} dimColor> · </Text>] : []),
           <Button key={b.key} plain onPress={() => ask($, b.key, b.label)}>
-            {capsule(Text, b.label, b.color)}
+            {capsule(Text, b.label, b.color, caps)}
           </Button>,
         ])}
       </Box>,
@@ -169,6 +172,7 @@ export const register: Register = on => {
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Button, Link, Markdown, Text } = $.ui.resolve(e)
+    const caps = e.surface === 'terminal'
     const shown = await read($, answer)
     const mode = BUTTONS.find(b => b.key === shown?.mode)
     const rule = <Text dimColor>{'─'.repeat(Math.max(8, e.props.bodyColumns - 4))}</Text>
@@ -185,7 +189,7 @@ export const register: Register = on => {
       <Box flexDirection="column" paddingX={2} paddingY={1} rowGap={1}>
         <Box justifyContent="space-between">
           <Box columnGap={1}>
-            <Box>{capsule(Text, mode.label, mode.color)}</Box>
+            <Box>{capsule(Text, mode.label, mode.color, caps)}</Box>
             <Text dimColor>{mode.subtitle}</Text>
           </Box>
           {shown.seconds !== undefined && <Text dimColor>{shown.seconds}s</Text>}
@@ -216,26 +220,26 @@ export const register: Register = on => {
         <Box columnGap={2} flexWrap="wrap">
           {shown.status !== 'loading' && (
             <Button key="again" plain onPress={() => ask($, mode.key, mode.label)}>
-              {capsule(Text, '↻ Again', PILL_FG)}
+              {capsule(Text, '↻ Again', PILL_FG, caps)}
             </Button>
           )}
           {shown.status === 'done' && (
             <Button key="copy" plain onPress={p => $.ui.copy({ text: shown.text, surface: p.surface })}>
-              {capsule(Text, '⧉ Copy', PILL_FG)}
+              {capsule(Text, '⧉ Copy', PILL_FG, caps)}
             </Button>
           )}
           {shown.status === 'done' && shown.artifact?.status !== 'publishing' && shown.artifact?.status !== 'done' && (
             <Button key="artifact" plain onPress={() => publish($, shown)}>
-              {capsule(Text, '◆ Artifact', PILL_FG)}
+              {capsule(Text, '◆ Artifact', PILL_FG, caps)}
             </Button>
           )}
           {shown.artifact?.status === 'done' && (
             <Button key="open" plain onPress={() => $.tool.call({ tool: 'Artifact', action: 'open', url: shown.artifact!.text })}>
-              {capsule(Text, '↗ Open', PILL_FG)}
+              {capsule(Text, '↗ Open', PILL_FG, caps)}
             </Button>
           )}
           <Button key="close" plain onPress={() => $.ui.close({ id: PANE })}>
-            {capsule(Text, '✕ Close', PILL_FG)}
+            {capsule(Text, '✕ Close', PILL_FG, caps)}
           </Button>
         </Box>
       </Box>

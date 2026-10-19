@@ -132,3 +132,23 @@ test('the band shares one row with the mods beneath, the engine band under it', 
   expect(at('·')).toBeLessThan(at('Other mod'))
   expect(at('Other mod')).toBeLessThan(at('engine notice'))
 })
+
+// The capsules' caps are Nerd Font glyphs: the terminal draws them, other surfaces have no such font.
+const CAPS = /[]/
+
+test('capsules have Nerd Font caps on the terminal and only their body on desktop', async ($, on) => {
+  session(on)
+
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const band = await $.ui.mount({ ...BAND, surface })
+    await band.press({ key: 'handoff' })
+    await settle()
+    const pane = await $.ui.mount({ ...PANE_TARGET, surface })
+
+    for (const site of [band, pane]) {
+      const texts = (await site.findAll({ type: 'Text' })).map(t => t.text ?? '')
+      expect(texts.some(t => CAPS.test(t))).toBe(surface === 'terminal')
+      expect(texts).toContain(' Handoff ')
+    }
+  }
+})
