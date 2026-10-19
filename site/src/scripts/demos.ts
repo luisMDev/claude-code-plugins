@@ -105,10 +105,18 @@ async function request(d: Demo, text: string) {
 }
 
 /** Opens the pane for `b`, spins its loading line, then streams the answer in. */
-async function answer(d: Demo, b: Button, loading: string, seconds: number, selection?: string, request?: string) {
+async function answer(
+  d: Demo,
+  b: Button,
+  loading: string,
+  [seconds, tokens]: [number, number],
+  selection?: string,
+  request?: string,
+) {
   d.pane.replaceChildren()
   const head = el('header', '')
-  head.append(capsule(b.label, b.color), el('span', 'dim', b.subtitle))
+  const meta = el('span', 'dim meta') // seconds and tokens, at the right as in the mod's pane
+  head.append(capsule(b.label, b.color), el('span', 'dim', b.subtitle), meta)
   const body = el('div', 'body')
   const foot = el('footer', '')
   d.pane.append(
@@ -122,15 +130,17 @@ async function answer(d: Demo, b: Button, loading: string, seconds: number, sele
   )
   d.pane.classList.add('open')
 
+  // The loading line counts the seconds, as the mod's pane does, sped up.
   const spin = el('p', '', '')
   spin.style.color = b.color
   body.append(spin)
-  for (let i = 0; i < (reduced ? 0 : 14); i++) {
-    spin.textContent = `${SPIN[i % 4]} ${loading}`
+  const steps = reduced ? 0 : 14
+  for (let i = 0; i < steps; i++) {
+    spin.textContent = `${SPIN[i % 4]} ${loading} ${Math.floor((i * seconds) / steps)}s`
     await wait(d, 110)
   }
   spin.remove()
-  head.lastElementChild!.textContent = `${b.subtitle} · ${seconds}s`
+  meta.textContent = `${seconds}s · ${tokens < 1000 ? tokens : `${(tokens / 1000).toFixed(1)}k`} tokens`
   for (const text of (selection && b.selected) || b.answer) {
     const p = el('p', text.startsWith('## ') ? 'h' : '', '')
     if (text.startsWith('## ')) p.style.color = b.color
@@ -188,7 +198,7 @@ async function howWhyTeach(d: Demo, round: number) {
   write.classList.remove('sel')
   badge.remove()
   d.input.textContent = ''
-  const { body, foot } = await answer(d, d.buttons[k], 'Thinking…', 9, selection, asked)
+  const { body, foot } = await answer(d, d.buttons[k], 'Thinking…', [9, 640], selection, asked)
   const actions = ['↻ Again', 'Copy', '◆ Artifact', '✕ Close'].map((t) => capsule(t))
   foot.append(...actions)
   await wait(d, 1200)
@@ -227,7 +237,7 @@ async function handoff(d: Demo) {
   await press(d, pill)
   d.input.textContent = ''
   const b = d.buttons[0]
-  const { body, foot } = await answer(d, b, 'Writing the handoff…', 14, undefined, asked)
+  const { body, foot } = await answer(d, b, 'Writing the handoff…', [14, 1120], undefined, asked)
   const actions = ['↻ Again', 'Copy', '⇢ New session', '✕ Close'].map((t) => capsule(t))
   foot.append(...actions)
   await wait(d, 1200)

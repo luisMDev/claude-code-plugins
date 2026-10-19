@@ -211,6 +211,19 @@ const { id, buttons } = Astro.props
     align-items: center;
     gap: 8px;
   }
+  .pane :global(header) {
+    flex-wrap: nowrap;
+  }
+  .pane :global(header .dim) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .pane :global(.meta) {
+    flex-shrink: 0;
+    margin-left: auto;
+  }
   .pane :global(header + .dim) {
     margin-top: 6px;
   }

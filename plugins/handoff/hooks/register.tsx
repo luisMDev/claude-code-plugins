@@ -46,17 +46,26 @@ async function write($: EngineInterface, request: string | undefined) {
   const startedAt = await $.clock.now()
   await update($, handoff, () => ({ request, status: 'loading' as const, text: '' }))
 
+  // The fork answers whole, never in parts: the pane counts the seconds meanwhile.
+  const elapsed = async () => Math.round(((await $.clock.now()) - startedAt) / 1000)
+  const tick = $.clock.every(1000, async () => {
+    const seconds = await elapsed()
+    await update($, handoff, now => (run === latest && now?.status === 'loading' ? { ...now, seconds } : now))
+  })
+
   let result: Handoff
   try {
     await $.ui.open({ id: PANE, title: 'Handoff' })
     const skill = await $.fs.read(`${$.plugin.root}/skills/handoff/SKILL.md`)
     const reply = await $.model.fork({ prompt: forkPrompt(skill, request) })
-    const seconds = Math.round(((await $.clock.now()) - startedAt) / 1000)
+    const seconds = await elapsed()
     result = reply.isAnswered
-      ? { request, status: 'done', text: reply.text, seconds }
+      ? { request, status: 'done', text: reply.text, seconds, tokens: reply.usage.output_tokens }
       : { request, status: 'error', text: `No answer: ${reply.reason}`, seconds }
   } catch (error) {
     result = { request, status: 'error', text: String(error) }
+  } finally {
+    tick.cancel()
   }
 
   if (run === latest) {
@@ -133,6 +142,9 @@ const snippet = (text: string) => {
   return first.length > 60 || text.includes('\n') ? `${first.slice(0, 60)}…` : first
 }
 
+// A token count as people read it: 820, 1.1k.
+const count = (n: number) => (n < 1000 ? `${n}` : `${(n / 1000).toFixed(1)}k`)
+
 function capsule(Text: ElementConstructor<TextProps>, label: string, color: string, caps: boolean) {
   const body = (
     <Text backgroundColor={PILL_BG} color={color} bold>
@@ -187,13 +199,15 @@ export const register: Register = on => {
             <Box>{capsule(Text, 'Handoff', COLOR, caps)}</Box>
             <Text dimColor>For the next session</Text>
           </Box>
-          {shown.seconds !== undefined && <Text dimColor>{shown.seconds}s</Text>}
+          {shown.status !== 'loading' && shown.seconds !== undefined && (
+            <Text dimColor>{shown.tokens === undefined ? `${shown.seconds}s` : `${shown.seconds}s · ${count(shown.tokens)} tokens`}</Text>
+          )}
         </Box>
         {shown.request !== undefined && <Text dimColor>Your request: “{snippet(shown.request)}”</Text>}
         {rule}
         {shown.status === 'loading' && (
           <Box flexDirection="column">
-            <Text color={COLOR}>◔ Writing the handoff…</Text>
+            <Text color={COLOR}>◔ Writing the handoff… {shown.seconds ?? 0}s</Text>
             <Text dimColor>Reading the whole session without touching it.</Text>
           </Box>
         )}

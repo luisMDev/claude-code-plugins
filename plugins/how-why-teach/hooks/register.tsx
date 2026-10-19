@@ -50,17 +50,26 @@ async function ask(
   const startedAt = await $.clock.now()
   await update($, answer, () => ({ mode, selection, request, status: 'loading' as const, text: '' }))
 
+  // The fork answers whole, never in parts: the pane counts the seconds meanwhile.
+  const elapsed = async () => Math.round(((await $.clock.now()) - startedAt) / 1000)
+  const tick = $.clock.every(1000, async () => {
+    const seconds = await elapsed()
+    await update($, answer, now => (run === latest && now?.status === 'loading' ? { ...now, seconds } : now))
+  })
+
   let result: Answer
   try {
     await $.ui.open({ id: PANE, title })
     const skill = await $.fs.read(`${$.plugin.root}/skills/${mode}/SKILL.md`)
     const reply = await $.model.fork({ prompt: forkPrompt(skill, selection, request) })
-    const seconds = Math.round(((await $.clock.now()) - startedAt) / 1000)
+    const seconds = await elapsed()
     result = reply.isAnswered
-      ? { mode, selection, request, status: 'done', text: reply.text, seconds }
+      ? { mode, selection, request, status: 'done', text: reply.text, seconds, tokens: reply.usage.output_tokens }
       : { mode, selection, request, status: 'error', text: `No answer: ${reply.reason}`, seconds }
   } catch (error) {
     result = { mode, selection, request, status: 'error', text: String(error) }
+  } finally {
+    tick.cancel()
   }
 
   if (run === latest) {
@@ -224,6 +233,9 @@ const snippet = (text: string) => {
   return first.length > 60 || text.includes('\n') ? `${first.slice(0, 60)}…` : first
 }
 
+// A token count as people read it: 820, 1.1k.
+const count = (n: number) => (n < 1000 ? `${n}` : `${(n / 1000).toFixed(1)}k`)
+
 function capsule(Text: ElementConstructor<TextProps>, label: string, color: string, caps: boolean) {
   const body = (
     <Text backgroundColor={PILL_BG} color={color} bold>
@@ -309,14 +321,16 @@ export const register: Register = on => {
             <Box>{capsule(Text, mode.label, mode.color, caps)}</Box>
             <Text dimColor>{mode.subtitle}</Text>
           </Box>
-          {shown.seconds !== undefined && <Text dimColor>{shown.seconds}s</Text>}
+          {shown.status !== 'loading' && shown.seconds !== undefined && (
+            <Text dimColor>{shown.tokens === undefined ? `${shown.seconds}s` : `${shown.seconds}s · ${count(shown.tokens)} tokens`}</Text>
+          )}
         </Box>
         {shown.selection !== undefined && <Text dimColor>About your selection: “{snippet(shown.selection)}”</Text>}
         {shown.request !== undefined && <Text dimColor>Your request: “{snippet(shown.request)}”</Text>}
         {rule}
         {shown.status === 'loading' && (
           <Box flexDirection="column">
-            <Text color={mode.color}>◔ Thinking…</Text>
+            <Text color={mode.color}>◔ Thinking… {shown.seconds ?? 0}s</Text>
             <Text dimColor>Reading the whole session without touching it.</Text>
             {mode.key === 'teach' && <Text dimColor>A lesson can take half a minute.</Text>}
           </Box>

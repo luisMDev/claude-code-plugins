@@ -424,3 +424,26 @@ test('a selection does not expire while a request is being typed', async ($, on)
   await time.advance(500)
   expect(await badge()).toBeUndefined()
 })
+
+test('the pane counts the seconds while the fork runs, then shows the tokens', async ($, on) => {
+  const time = mock.clock(on)
+  noSelection(on)
+  emptyPrompt(on)
+  on('fs.read', () => ({ value: SKILL }))
+  on('ui.open', () => ({ value: { isPlaced: true as const } }))
+  on('model.fork', async () => {
+    await time.sleep(3000)
+    return { value: { isAnswered: true as const, text: 'Done.', usage: { ...USAGE, output_tokens: 820 } } }
+  })
+  engineBand(on)
+  const band = await $.ui.mount(BAND)
+
+  const pressed = band.press({ key: 'why' })
+  await time.advance(2000)
+  const pane = await $.ui.mount(PANE_TARGET)
+  expect(await pane.find({ type: 'Text', text: /Thinking… 2s/ })).toBeDefined()
+  await time.advance(1000)
+  await pressed
+  expect(await pane.find({ type: 'Text', text: '3s · 820 tokens' })).toBeDefined()
+  expect(await pane.find({ type: 'Text', text: /Thinking/ })).toBeUndefined()
+})
