@@ -1,7 +1,7 @@
 {
   "name": "how-why-teach",
-  "version": "0.3.4",
-  "description": "A band above the prompt with How, Why and Teach buttons; each answers in a side pane from a fork of the session, leaving the main thread untouched.",
+  "version": "0.4.0",
+  "description": "A band above the prompt with How, Why and Teach buttons; each answers in a side pane from a fork of the session, leaving the main thread untouched. Select a passage of the transcript first and the answer is about that passage.",
   "author": {
     "name": "LuismDev"
   },

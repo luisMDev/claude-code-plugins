@@ -1,7 +1,7 @@
 import type { On } from 'claude-code'
-import { expect, test } from 'claude-code/testing'
+import { expect, mock, test } from 'claude-code/testing'
 
-import { PANE } from './register'
+import { isCommand, PANE } from './register'
 
 declare function setTimeout(callback: () => void, ms: number): unknown
 
@@ -36,10 +36,14 @@ function engineBand(on: On, text = 'engine band') {
   })
 }
 
+// Nothing selected on screen: the buttons explain the session as a whole.
+const noSelection = (on: On) => on('ui.selection', () => ({ value: undefined }))
+
 const settle = () => new Promise<void>(resolve => setTimeout(resolve, 50))
 
 test('a button answers in the pane from a fork of the session, never through a prompt', async ($, on) => {
   clock(on)
+  noSelection(on)
   const reads: string[] = []
   on('fs.read', (_, e) => {
     reads.push(e.path)
@@ -85,6 +89,7 @@ test('a button answers in the pane from a fork of the session, never through a p
 
 test('a fork with no answer shows why in the pane', async ($, on) => {
   clock(on)
+  noSelection(on)
   on('ui.open', () => ({ value: { isPlaced: true as const } }))
   on('fs.read', () => ({ value: SKILL }))
   on('model.fork', () => ({ value: { isAnswered: false as const, reason: 'nothing-to-fork' as const, usage: USAGE } }))
@@ -108,6 +113,7 @@ test('the band yields to a survey', async ($, on) => {
 
 test('Artifact lays the answer out, writes it out of git and publishes it', async ($, on) => {
   clock(on)
+  noSelection(on)
   const writes: { path: string; text: string }[] = []
   const published: unknown[] = []
   on('ui.open', () => ({ value: { isPlaced: true as const } }))
@@ -168,6 +174,7 @@ const CAPS = /[]/
 
 test('capsules have Nerd Font caps on the terminal and only their body on desktop', async ($, on) => {
   clock(on)
+  noSelection(on)
   on('fs.read', () => ({ value: SKILL }))
   on('model.fork', () => ({ value: { isAnswered: true as const, text: 'Done.', usage: USAGE } }))
   on('ui.open', () => ({ value: { isPlaced: true as const } }))
@@ -185,4 +192,164 @@ test('capsules have Nerd Font caps on the terminal and only their body on deskto
       expect(texts).toContain(' How ')
     }
   }
+})
+
+test('a selection scopes the answer to that passage, and Again asks about it again', async ($, on) => {
+  clock(on)
+  on('fs.read', () => ({ value: SKILL }))
+  on('ui.open', () => ({ value: { isPlaced: true as const } }))
+  let selected: { text: string } | undefined = { text: '  Wrote 180 lines\nto index.astro  ' }
+  on('ui.selection', () => ({ value: selected }))
+  const forks: string[] = []
+  on('model.fork', (_, e) => {
+    forks.push(e.prompt)
+    return { value: { isAnswered: true as const, text: 'That passage.', usage: USAGE } }
+  })
+  engineBand(on)
+  const band = await $.ui.mount(BAND)
+
+  await band.press({ key: 'why' })
+  await settle()
+  expect(forks[0]).toContain('this passage of the session, which the person selected')
+  expect(forks[0]).toContain('> Wrote 180 lines\n> to index.astro')
+
+  // The press took the highlight down: Again keeps the passage the answer is about.
+  selected = undefined
+  const pane = await $.ui.mount(PANE_TARGET)
+  expect(await pane.find({ type: 'Text', text: 'About your selection: “Wrote 180 lines…”' })).toBeDefined()
+  await pane.press({ key: 'again' })
+  await settle()
+  expect(forks[1]).toBe(forks[0])
+
+  await band.press({ key: 'why' })
+  await settle()
+  expect(forks[2]).toContain('to what we are doing in this session')
+  expect(forks[2]).not.toContain('> ')
+})
+
+test('the band notes the selection the buttons will answer about, and follows it', async ($, on) => {
+  const time = mock.clock(on)
+  let selected: { text: string } | undefined
+  on('ui.selection', () => ({ value: selected }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  engineBand(on)
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  const band = await $.ui.mount(BAND)
+  const badge = async () =>
+    (await band.findAll({ type: 'Text' })).map(t => t.text?.trim()).find(t => t?.startsWith('↳'))
+
+  expect(await badge()).toBeUndefined()
+  selected = { text: 'one\ntwo\nthree' }
+  await time.advance(500)
+  expect(await badge()).toBe('↳ 3 selected lines')
+  selected = { text: ' Wrote 180 lines to the landing page ' }
+  await time.advance(500)
+  expect(await badge()).toBe('↳ “Wrote 180 lines to the l…”')
+  selected = undefined
+  await time.advance(500)
+  expect(await badge()).toBeUndefined()
+})
+
+test('a selection is spent once answered or dropped with ✕, until another is selected', async ($, on) => {
+  const time = mock.clock(on)
+  let selected: { text: string } | undefined = { text: 'one\ntwo' }
+  on('ui.selection', () => ({ value: selected }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('fs.read', () => ({ value: SKILL }))
+  on('ui.open', () => ({ value: { isPlaced: true as const } }))
+  const forks: string[] = []
+  on('model.fork', (_, e) => {
+    forks.push(e.prompt)
+    return { value: { isAnswered: true as const, text: 'Answer.', usage: USAGE } }
+  })
+  engineBand(on)
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  const band = await $.ui.mount(BAND)
+  const badge = async () =>
+    (await band.findAll({ type: 'Text' })).map(t => t.text?.trim()).find(t => t?.startsWith('↳'))
+
+  await time.advance(500)
+  expect(await badge()).toBe('↳ 2 selected lines')
+
+  // The click on How took the highlight down; the engine still answers the same text.
+  await band.press({ key: 'how' })
+  await time.settle()
+  expect(forks[0]).toContain('> one\n> two')
+  await time.advance(500)
+  expect(await badge()).toBeUndefined()
+  await band.press({ key: 'how' })
+  await time.settle()
+  expect(forks[1]).toContain('to what we are doing in this session')
+
+  // A new selection counts again; ✕ drops it without an answer.
+  selected = { text: 'three' }
+  await time.advance(500)
+  expect(await badge()).toBe('↳ “three”')
+  await band.press({ key: 'forget-selection' })
+  await time.advance(500)
+  expect(await badge()).toBeUndefined()
+  await band.press({ key: 'why' })
+  await time.settle()
+  expect(forks[2]).toContain('to what we are doing in this session')
+})
+
+test('an edit leaves the selection to a /command only', () => {
+  const edit = (text: string, inputText: string) => ({ text, start: text.length, end: text.length, inputText })
+  expect(isCommand(edit('', '/'))).toBe(true)
+  expect(isCommand(edit('/h', 'o'))).toBe(true)
+  expect(isCommand(edit('', 'w'))).toBe(false)
+  expect(isCommand({ text: '/how', start: 0, end: 1, inputText: '' })).toBe(false)
+})
+
+test('a command that ends makes the badge go at once, with no tick', async ($, on) => {
+  const time = mock.clock(on)
+  let selected: { text: string } | undefined = { text: 'one' }
+  on('ui.selection', () => ({ value: selected }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('command.run', () => ({ text: 'ran' }))
+  engineBand(on)
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  const band = await $.ui.mount(BAND)
+  const badge = async () =>
+    (await band.findAll({ type: 'Text' })).map(t => t.text?.trim()).find(t => t?.startsWith('↳'))
+
+  await time.advance(500)
+  expect(await badge()).toBe('↳ “one”')
+  selected = undefined
+  await $.command.run({ command: 'compact', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: true, columns: 120 } })
+  expect(await badge()).toBeUndefined()
+})
+
+test('a selection left unused for ten seconds is dropped', async ($, on) => {
+  const time = mock.clock(on)
+  let selected: { text: string } | undefined = { text: 'one' }
+  on('ui.selection', () => ({ value: selected }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('fs.read', () => ({ value: SKILL }))
+  on('ui.open', () => ({ value: { isPlaced: true as const } }))
+  const forks: string[] = []
+  on('model.fork', (_, e) => {
+    forks.push(e.prompt)
+    return { value: { isAnswered: true as const, text: 'Answer.', usage: USAGE } }
+  })
+  engineBand(on)
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  const band = await $.ui.mount(BAND)
+  const badge = async () =>
+    (await band.findAll({ type: 'Text' })).map(t => t.text?.trim()).find(t => t?.startsWith('↳'))
+
+  await time.advance(500)
+  expect(await badge()).toBe('↳ “one”')
+  await time.advance(9000)
+  expect(await badge()).toBe('↳ “one”')
+  await time.advance(1000)
+  expect(await badge()).toBeUndefined()
+  await band.press({ key: 'how' })
+  await time.settle()
+  expect(forks[0]).toContain('to what we are doing in this session')
+
+  // Another selection gets its own ten seconds.
+  selected = { text: 'two' }
+  await time.advance(500)
+  expect(await badge()).toBe('↳ “two”')
 })

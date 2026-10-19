@@ -3,12 +3,15 @@ export type Answer = {
   status: 'loading' | 'done' | 'error'
   text: string
   seconds?: number
+  // The passage the person had selected when they pressed the button; Again asks about it again.
+  selection?: string
   // The answer published as an artifact: its URL once done, the reason on an error.
   artifact?: { status: 'publishing' | 'done' | 'error'; text: string }
 }
 
 declare module 'claude-code' {
   interface PluginState {
-    'how-why-teach': { answer: Answer | null }
+    // selected: what the person has selected on screen, as the band last saw it.
+    'how-why-teach': { answer: Answer | null; selected: string | null }
   }
 }

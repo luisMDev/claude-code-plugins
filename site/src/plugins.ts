@@ -25,6 +25,7 @@ export interface Button {
   color: string
   subtitle: string
   answer: string[]
+  selected?: string[] // the answer when the demo's pointer selected a line first
 }
 
 export interface Skill {
@@ -50,6 +51,13 @@ const EXTRAS: Record<string, Pick<Plugin, 'hooks' | 'draws' | 'buttons'>> = {
         label: 'How',
         color: '#87afaf',
         subtitle: "How it's done",
+        selected: [
+          '## Goal',
+          'This line: index.astro written in one Write call.',
+          '## Steps',
+          '1. The page reads the manifests at build time',
+          '2. One block per plugin, 180 lines in all',
+        ],
         answer: [
           '## Goal',
           'Serve the plugins page from site/ on GitHub Pages.',
@@ -63,6 +71,12 @@ const EXTRAS: Record<string, Pick<Plugin, 'hooks' | 'draws' | 'buttons'>> = {
         label: 'Why',
         color: '#ffaf00',
         subtitle: 'Why this way',
+        selected: [
+          '## Why one file',
+          'One page, so one Write; no layout to share yet.',
+          '## Cons',
+          'It grows with each plugin; split it at a third.',
+        ],
         answer: [
           '## Why this approach',
           'The site reads the manifests, so it cannot drift.',
@@ -76,6 +90,12 @@ const EXTRAS: Record<string, Pick<Plugin, 'hooks' | 'draws' | 'buttons'>> = {
         label: 'Teach',
         color: '#afaf00',
         subtitle: 'Lesson',
+        selected: [
+          '## Prerequisites',
+          'Write replaces a whole file; Edit changes a part.',
+          '## Check your understanding',
+          '1. Why Write here, and not Edit?',
+        ],
         answer: [
           '## Prerequisites',
           'A static site generator turns templates into plain HTML',

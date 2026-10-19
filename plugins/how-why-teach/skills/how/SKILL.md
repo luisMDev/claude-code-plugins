@@ -13,6 +13,8 @@ Look back over the session: the request, the files read and changed, the command
 
 Do not run new tools unless a fact you need is missing from the session. Never change files.
 
+When the person selected a passage of the session, that passage is the scope: cover it, with the rest of the session as context.
+
 ## What to cover
 
 1. **The goal in one sentence**, so the reader knows what the "how" is for.
