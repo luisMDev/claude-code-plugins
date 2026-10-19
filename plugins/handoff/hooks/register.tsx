@@ -14,10 +14,15 @@ export const PANE = 'handoff'
 const handoff = atom({ plugin: 'handoff', key: 'handoff' } as const, null)
 
 // The fork has no tools, so it writes the document and the plugin saves it.
-export const forkPrompt = (skill: string) =>
+// A request (what the person typed in the prompt) goes along, followed where it
+// differs from the skill.
+export const forkPrompt = (skill: string, request?: string) =>
   `${skill.replace(/^---\n[\s\S]*?\n---\n/, '').trim()}\n\n` +
   'You cannot call tools here: reply with the handoff document alone, in Markdown. ' +
-  'The plugin saves it and hands it to the next session.'
+  'The plugin saves it and hands it to the next session.' +
+  (request === undefined
+    ? ''
+    : `\n\nThe person adds this request; where it differs from the instructions above, it wins:\n\n${request.replace(/^/gm, '> ')}`)
 
 export const sessionPrompt = (path: string) =>
   `Read ${path}: a handoff from a previous Claude Code session. ` +
@@ -26,22 +31,32 @@ export const sessionPrompt = (path: string) =>
 // Only the latest press writes its document; an older fork that lands late is dropped.
 let latest = 0
 
-async function write($: EngineInterface) {
+// What the person typed in the prompt, taken out of it: their request.
+async function takeRequest($: EngineInterface) {
+  const request = (await $.prompt.read()).text.trim()
+  if (request === '') {
+    return undefined
+  }
+  await $.prompt.fill({ text: '', mode: 'replace' })
+  return request
+}
+
+async function write($: EngineInterface, request: string | undefined) {
   const run = ++latest
   const startedAt = await $.clock.now()
-  await update($, handoff, () => ({ status: 'loading' as const, text: '' }))
+  await update($, handoff, () => ({ request, status: 'loading' as const, text: '' }))
 
   let result: Handoff
   try {
     await $.ui.open({ id: PANE, title: 'Handoff' })
     const skill = await $.fs.read(`${$.plugin.root}/skills/handoff/SKILL.md`)
-    const reply = await $.model.fork({ prompt: forkPrompt(skill) })
+    const reply = await $.model.fork({ prompt: forkPrompt(skill, request) })
     const seconds = Math.round(((await $.clock.now()) - startedAt) / 1000)
     result = reply.isAnswered
-      ? { status: 'done', text: reply.text, seconds }
-      : { status: 'error', text: `No answer: ${reply.reason}`, seconds }
+      ? { request, status: 'done', text: reply.text, seconds }
+      : { request, status: 'error', text: `No answer: ${reply.reason}`, seconds }
   } catch (error) {
-    result = { status: 'error', text: String(error) }
+    result = { request, status: 'error', text: String(error) }
   }
 
   if (run === latest) {
@@ -112,6 +127,12 @@ function joinBand(
   )
 }
 
+// A text's first line, cut short, for the pane's header.
+const snippet = (text: string) => {
+  const first = text.split('\n')[0]!
+  return first.length > 60 || text.includes('\n') ? `${first.slice(0, 60)}…` : first
+}
+
 function capsule(Text: ElementConstructor<TextProps>, label: string, color: string, caps: boolean) {
   const body = (
     <Text backgroundColor={PILL_BG} color={color} bold>
@@ -136,7 +157,7 @@ export const register: Register = on => {
     return joinBand(
       Box,
       Text,
-      <Button key="handoff" plain onPress={() => write($)}>
+      <Button key="handoff" plain onPress={async () => write($, await takeRequest($))}>
         {capsule(Text, 'Handoff', COLOR, caps)}
       </Button>,
       below,
@@ -168,6 +189,7 @@ export const register: Register = on => {
           </Box>
           {shown.seconds !== undefined && <Text dimColor>{shown.seconds}s</Text>}
         </Box>
+        {shown.request !== undefined && <Text dimColor>Your request: “{snippet(shown.request)}”</Text>}
         {rule}
         {shown.status === 'loading' && (
           <Box flexDirection="column">
@@ -193,7 +215,7 @@ export const register: Register = on => {
         )}
         <Box columnGap={2} flexWrap="wrap">
           {shown.status !== 'loading' && (
-            <Button key="again" plain onPress={() => write($)}>
+            <Button key="again" plain onPress={() => write($, shown.request)}>
               {capsule(Text, '↻ Again', PILL_FG, caps)}
             </Button>
           )}

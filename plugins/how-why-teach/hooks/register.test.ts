@@ -1,7 +1,7 @@
 import type { On } from 'claude-code'
 import { expect, mock, test } from 'claude-code/testing'
 
-import { isCommand, PANE } from './register'
+import { PANE } from './register'
 
 declare function setTimeout(callback: () => void, ms: number): unknown
 
@@ -39,11 +39,15 @@ function engineBand(on: On, text = 'engine band') {
 // Nothing selected on screen: the buttons explain the session as a whole.
 const noSelection = (on: On) => on('ui.selection', () => ({ value: undefined }))
 
+// Nothing typed in the prompt: no request goes with the question.
+const emptyPrompt = (on: On) => on('prompt.read', () => ({ value: { text: '', cursor: 0 } }))
+
 const settle = () => new Promise<void>(resolve => setTimeout(resolve, 50))
 
 test('a button answers in the pane from a fork of the session, never through a prompt', async ($, on) => {
   clock(on)
   noSelection(on)
+  emptyPrompt(on)
   const reads: string[] = []
   on('fs.read', (_, e) => {
     reads.push(e.path)
@@ -76,6 +80,7 @@ test('a button answers in the pane from a fork of the session, never through a p
   expect(forks).toHaveLength(1)
   expect(forks[0]).toContain('# How')
   expect(forks[0]).not.toContain('description:')
+  expect(forks[0]).not.toContain('The person adds this request')
   expect(opened).toEqual([PANE])
   const pane = await $.ui.mount(PANE_TARGET)
   expect((await pane.find({ key: 'answer' }))?.text).toContain('how')
@@ -90,6 +95,7 @@ test('a button answers in the pane from a fork of the session, never through a p
 test('a fork with no answer shows why in the pane', async ($, on) => {
   clock(on)
   noSelection(on)
+  emptyPrompt(on)
   on('ui.open', () => ({ value: { isPlaced: true as const } }))
   on('fs.read', () => ({ value: SKILL }))
   on('model.fork', () => ({ value: { isAnswered: false as const, reason: 'nothing-to-fork' as const, usage: USAGE } }))
@@ -114,6 +120,7 @@ test('the band yields to a survey', async ($, on) => {
 test('Artifact lays the answer out, writes it out of git and publishes it', async ($, on) => {
   clock(on)
   noSelection(on)
+  emptyPrompt(on)
   const writes: { path: string; text: string }[] = []
   const published: unknown[] = []
   on('ui.open', () => ({ value: { isPlaced: true as const } }))
@@ -175,6 +182,7 @@ const CAPS = /[]/
 test('capsules have Nerd Font caps on the terminal and only their body on desktop', async ($, on) => {
   clock(on)
   noSelection(on)
+  emptyPrompt(on)
   on('fs.read', () => ({ value: SKILL }))
   on('model.fork', () => ({ value: { isAnswered: true as const, text: 'Done.', usage: USAGE } }))
   on('ui.open', () => ({ value: { isPlaced: true as const } }))
@@ -200,6 +208,7 @@ test('a selection scopes the answer to that passage, and Again asks about it aga
   on('ui.open', () => ({ value: { isPlaced: true as const } }))
   let selected: { text: string } | undefined = { text: '  Wrote 180 lines\nto index.astro  ' }
   on('ui.selection', () => ({ value: selected }))
+  emptyPrompt(on)
   const forks: string[] = []
   on('model.fork', (_, e) => {
     forks.push(e.prompt)
@@ -231,6 +240,7 @@ test('the band notes the selection the buttons will answer about, and follows it
   const time = mock.clock(on)
   let selected: { text: string } | undefined
   on('ui.selection', () => ({ value: selected }))
+  emptyPrompt(on)
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   engineBand(on)
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
@@ -254,6 +264,7 @@ test('a selection is spent once answered or dropped with ✕, until another is s
   const time = mock.clock(on)
   let selected: { text: string } | undefined = { text: 'one\ntwo' }
   on('ui.selection', () => ({ value: selected }))
+  emptyPrompt(on)
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('fs.read', () => ({ value: SKILL }))
   on('ui.open', () => ({ value: { isPlaced: true as const } }))
@@ -293,18 +304,11 @@ test('a selection is spent once answered or dropped with ✕, until another is s
   expect(forks[2]).toContain('to what we are doing in this session')
 })
 
-test('an edit leaves the selection to a /command only', () => {
-  const edit = (text: string, inputText: string) => ({ text, start: text.length, end: text.length, inputText })
-  expect(isCommand(edit('', '/'))).toBe(true)
-  expect(isCommand(edit('/h', 'o'))).toBe(true)
-  expect(isCommand(edit('', 'w'))).toBe(false)
-  expect(isCommand({ text: '/how', start: 0, end: 1, inputText: '' })).toBe(false)
-})
-
 test('a command that ends makes the badge go at once, with no tick', async ($, on) => {
   const time = mock.clock(on)
   let selected: { text: string } | undefined = { text: 'one' }
   on('ui.selection', () => ({ value: selected }))
+  emptyPrompt(on)
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('command.run', () => ({ text: 'ran' }))
   engineBand(on)
@@ -324,6 +328,7 @@ test('a selection left unused for ten seconds is dropped', async ($, on) => {
   const time = mock.clock(on)
   let selected: { text: string } | undefined = { text: 'one' }
   on('ui.selection', () => ({ value: selected }))
+  emptyPrompt(on)
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('fs.read', () => ({ value: SKILL }))
   on('ui.open', () => ({ value: { isPlaced: true as const } }))
@@ -352,4 +357,70 @@ test('a selection left unused for ten seconds is dropped', async ($, on) => {
   selected = { text: 'two' }
   await time.advance(500)
   expect(await badge()).toBe('↳ “two”')
+})
+
+test('what is typed in the prompt goes with the question as a request, and leaves the prompt', async ($, on) => {
+  clock(on)
+  on('fs.read', () => ({ value: SKILL }))
+  on('ui.open', () => ({ value: { isPlaced: true as const } }))
+  let selected: { text: string } | undefined = { text: 'Wrote 180 lines' }
+  on('ui.selection', () => ({ value: selected }))
+  let draft = '  explain it in English  '
+  on('prompt.read', () => ({ value: { text: draft, cursor: draft.length } }))
+  const fills: { text: string; mode: string }[] = []
+  on('prompt.fill', (_, e) => {
+    fills.push({ text: e.text, mode: e.mode })
+    draft = e.text
+    return { isFilled: true }
+  })
+  const forks: string[] = []
+  on('model.fork', (_, e) => {
+    forks.push(e.prompt)
+    return { value: { isAnswered: true as const, text: 'Done.', usage: USAGE } }
+  })
+  engineBand(on)
+  const band = await $.ui.mount(BAND)
+
+  await band.press({ key: 'teach' })
+  await settle()
+  expect(forks[0]).toContain('> Wrote 180 lines')
+  expect(forks[0]).toContain('The person adds this request')
+  expect(forks[0]).toContain('> explain it in English')
+  expect(fills).toEqual([{ text: '', mode: 'replace' }])
+
+  const pane = await $.ui.mount(PANE_TARGET)
+  expect(await pane.find({ type: 'Text', text: 'Your request: “explain it in English”' })).toBeDefined()
+  await pane.press({ key: 'again' })
+  await settle()
+  expect(forks[1]).toBe(forks[0])
+  expect(fills).toHaveLength(1)
+
+  // No selection, a request: the whole session, with the request.
+  selected = undefined
+  draft = 'in one paragraph'
+  await band.press({ key: 'how' })
+  await settle()
+  expect(forks[2]).toContain('to what we are doing in this session')
+  expect(forks[2]).toContain('> in one paragraph')
+})
+
+test('a selection does not expire while a request is being typed', async ($, on) => {
+  const time = mock.clock(on)
+  on('ui.selection', () => ({ value: { text: 'one' } }))
+  let draft = ''
+  on('prompt.read', () => ({ value: { text: draft, cursor: draft.length } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  engineBand(on)
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  const band = await $.ui.mount(BAND)
+  const badge = async () =>
+    (await band.findAll({ type: 'Text' })).map(t => t.text?.trim()).find(t => t?.startsWith('↳'))
+
+  await time.advance(500)
+  draft = 'explain it in'
+  await time.advance(15000)
+  expect(await badge()).toBe('↳ “one”')
+  draft = ''
+  await time.advance(500)
+  expect(await badge()).toBeUndefined()
 })

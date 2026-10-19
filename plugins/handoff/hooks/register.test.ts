@@ -32,10 +32,12 @@ function engineBand(on: On, text = 'engine band') {
 }
 
 // A session whose fork writes DOC, in a clock that moves 4 s on each read.
-function session(on: On) {
+// A session to hand off; `draft` is what the prompt holds when Handoff is pressed.
+function session(on: On, draft = '') {
   let now = 0
   const forks: string[] = []
   on('clock.now', () => ({ value: (now += 4000) }))
+  on('prompt.read', () => ({ value: { text: draft, cursor: draft.length } }))
   on('ui.open', () => ({ value: { isPlaced: true as const } }))
   on('fs.read', () => ({ value: SKILL }))
   on('model.fork', (_, e) => {
@@ -63,6 +65,7 @@ test('Handoff writes the document in the pane from a fork of the session', async
   expect(forks[0]).toContain('Write a handoff document.')
   expect(forks[0]).toContain('You cannot call tools here')
   expect(forks[0]).not.toContain('description:')
+  expect(forks[0]).not.toContain('The person adds this request')
   const pane = await $.ui.mount(PANE_TARGET)
   expect((await pane.find({ key: 'doc' }))?.text).toContain('Pending: push.')
   expect((await pane.findAll({ type: 'Button' })).map(b => b.key)).toEqual(['again', 'copy', 'session', 'close'])
@@ -151,4 +154,27 @@ test('capsules have Nerd Font caps on the terminal and only their body on deskto
       expect(texts).toContain(' Handoff ')
     }
   }
+})
+
+test('what is typed in the prompt goes with the handoff as a request, and leaves the prompt', async ($, on) => {
+  const forks = session(on, ' focus on the deploy ')
+  const fills: { text: string; mode: string }[] = []
+  on('prompt.fill', (_, e) => {
+    fills.push({ text: e.text, mode: e.mode })
+    return { isFilled: true }
+  })
+  const band = await $.ui.mount(BAND)
+
+  await band.press({ key: 'handoff' })
+  await settle()
+  expect(forks[0]).toContain('The person adds this request')
+  expect(forks[0]).toContain('> focus on the deploy')
+  expect(fills).toEqual([{ text: '', mode: 'replace' }])
+
+  const pane = await $.ui.mount(PANE_TARGET)
+  expect(await pane.find({ type: 'Text', text: 'Your request: “focus on the deploy”' })).toBeDefined()
+  await pane.press({ key: 'again' })
+  await settle()
+  expect(forks[1]).toBe(forks[0])
+  expect(fills).toHaveLength(1)
 })

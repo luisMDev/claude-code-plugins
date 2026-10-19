@@ -1,7 +1,7 @@
 {
   "name": "handoff",
-  "version": "0.1.3",
-  "description": "A Handoff button above the prompt: writes a handoff of the session in a side pane from a fork, then starts a new background Claude Code session from it.",
+  "version": "0.2.0",
+  "description": "A Handoff button above the prompt: writes a handoff of the session in a side pane from a fork, then starts a new background Claude Code session from it. Text typed in the prompt goes along as a request.",
   "author": { "name": "LuismDev" },
   "types": "./types/index.d.ts"
 }

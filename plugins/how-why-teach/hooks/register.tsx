@@ -21,35 +21,46 @@ export const PANE = 'how-why-teach'
 const answer = atom({ plugin: 'how-why-teach', key: 'answer' } as const, null)
 const selected = atom({ plugin: 'how-why-teach', key: 'selected' } as const, null)
 
+const quote = (text: string) => text.replace(/^/gm, '> ')
+
 // The skill's instructions without their frontmatter, as the fork's question;
-// with a selection, scoped to that passage of the session.
-export const forkPrompt = (skill: string, selection?: string) =>
+// with a selection, scoped to that passage of the session; with a request (what
+// the person typed in the prompt), followed where it differs from the skill.
+export const forkPrompt = (skill: string, selection?: string, request?: string) =>
   `${skill.replace(/^---\n[\s\S]*?\n---\n/, '').trim()}\n\n` +
   (selection === undefined
     ? 'Apply these instructions now to what we are doing in this session. Do not call tools.'
     : 'Apply these instructions now to this passage of the session, which the person selected. ' +
-      'Explain the passage, using the rest of the session as context. Do not call tools.\n\n' +
-      selection.replace(/^/gm, '> '))
+      `Explain the passage, using the rest of the session as context. Do not call tools.\n\n${quote(selection)}`) +
+  (request === undefined
+    ? ''
+    : `\n\nThe person adds this request; where it differs from the instructions above, it wins:\n\n${quote(request)}`)
 
 // Only the latest press writes its answer; an older fork that lands late is dropped.
 let latest = 0
 
-async function ask($: EngineInterface, mode: Answer['mode'], title: string, selection: string | undefined) {
+async function ask(
+  $: EngineInterface,
+  mode: Answer['mode'],
+  title: string,
+  selection: string | undefined,
+  request: string | undefined,
+) {
   const run = ++latest
   const startedAt = await $.clock.now()
-  await update($, answer, () => ({ mode, selection, status: 'loading' as const, text: '' }))
+  await update($, answer, () => ({ mode, selection, request, status: 'loading' as const, text: '' }))
 
   let result: Answer
   try {
     await $.ui.open({ id: PANE, title })
     const skill = await $.fs.read(`${$.plugin.root}/skills/${mode}/SKILL.md`)
-    const reply = await $.model.fork({ prompt: forkPrompt(skill, selection) })
+    const reply = await $.model.fork({ prompt: forkPrompt(skill, selection, request) })
     const seconds = Math.round(((await $.clock.now()) - startedAt) / 1000)
     result = reply.isAnswered
-      ? { mode, selection, status: 'done', text: reply.text, seconds }
-      : { mode, selection, status: 'error', text: `No answer: ${reply.reason}`, seconds }
+      ? { mode, selection, request, status: 'done', text: reply.text, seconds }
+      : { mode, selection, request, status: 'error', text: `No answer: ${reply.reason}`, seconds }
   } catch (error) {
-    result = { mode, selection, status: 'error', text: String(error) }
+    result = { mode, selection, request, status: 'error', text: String(error) }
   }
 
   if (run === latest) {
@@ -64,8 +75,8 @@ let seen: string | null = null
 
 // The engine keeps the last selection after a click takes its highlight down,
 // and no event says it did. So a selection counts until it is spent: answered
-// once, dropped with the badge's ✕, or left unused for ten seconds. The same
-// text selected again stays spent.
+// once, dropped with the badge's ✕, or left unused for ten seconds while the
+// prompt is empty. The same text selected again stays spent.
 let spent: string | null = null
 
 const current = async ($: EngineInterface) => {
@@ -81,7 +92,10 @@ async function watchSelection($: EngineInterface) {
   const text = await current($)
   const now = await $.clock.now()
   if (text !== null && text === seen && now - seenAt >= SELECTION_TTL_MS) {
-    await spend($, text)
+    // A request being typed is meant for this selection: it waits for the press.
+    if ((await $.prompt.read()).text.trim() === '') {
+      await spend($, text)
+    }
   } else if (text !== seen) {
     seen = text
     seenAt = now
@@ -95,17 +109,24 @@ async function spend($: EngineInterface, text: string) {
   await update($, selected, () => null)
 }
 
-// Whether the prompt, once this edit lands, is a /command.
-export const isCommand = (e: { text: string; start: number; end: number; inputText: string }) =>
-  (e.text.slice(0, e.start) + e.inputText + e.text.slice(e.end)).startsWith('/')
+// What the person typed in the prompt, taken out of it: their request.
+async function takeRequest($: EngineInterface) {
+  const request = (await $.prompt.read()).text.trim()
+  if (request === '') {
+    return undefined
+  }
+  await $.prompt.fill({ text: '', mode: 'replace' })
+  return request
+}
 
-// A button's press: about the selection when one counts, which it spends.
+// A button's press: about the selection when one counts, which it spends, and
+// with the request typed in the prompt.
 async function press($: EngineInterface, mode: Answer['mode'], title: string) {
   const text = await current($)
   if (text !== null) {
     await spend($, text)
   }
-  await ask($, mode, title, text ?? undefined)
+  await ask($, mode, title, text ?? undefined, await takeRequest($))
 }
 
 // What the band notes beside the buttons: the lines they will answer about.
@@ -197,7 +218,7 @@ function joinBand(
   )
 }
 
-// The selection's first line, cut short, for the pane's header.
+// A text's first line, cut short, for the pane's header.
 const snippet = (text: string) => {
   const first = text.split('\n')[0]!
   return first.length > 60 || text.includes('\n') ? `${first.slice(0, 60)}…` : first
@@ -231,16 +252,6 @@ export const register: Register = on => {
   on('command.run', async ($, e, next) => {
     const result = await next(e)
     await watchSelection($)
-    return result
-  })
-
-  // A key in the prompt takes the highlight down, so the selection no longer
-  // counts; a /command still reads it, as the engine means it to.
-  on('prompt.edit', async ($, e, next) => {
-    const result = await next(e)
-    if (seen !== null && !isCommand(e)) {
-      await spend($, seen)
-    }
     return result
   })
 
@@ -301,6 +312,7 @@ export const register: Register = on => {
           {shown.seconds !== undefined && <Text dimColor>{shown.seconds}s</Text>}
         </Box>
         {shown.selection !== undefined && <Text dimColor>About your selection: “{snippet(shown.selection)}”</Text>}
+        {shown.request !== undefined && <Text dimColor>Your request: “{snippet(shown.request)}”</Text>}
         {rule}
         {shown.status === 'loading' && (
           <Box flexDirection="column">
@@ -326,7 +338,7 @@ export const register: Register = on => {
         )}
         <Box columnGap={2} flexWrap="wrap">
           {shown.status !== 'loading' && (
-            <Button key="again" plain onPress={() => ask($, mode.key, mode.label, shown.selection)}>
+            <Button key="again" plain onPress={() => ask($, mode.key, mode.label, shown.selection, shown.request)}>
               {capsule(Text, '↻ Again', PILL_FG, caps)}
             </Button>
           )}

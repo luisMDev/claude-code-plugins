@@ -1,10 +1,10 @@
 // The plugin demos: a scripted Claude Code session per plugin that plays the
 // mod as it really behaves. The band of capsules shows up above the prompt, a
-// pointer presses a button (for how-why-teach, now and then after selecting a
-// line first), the side pane opens with its loading line, the answer streams
-// in, and the pane's own actions run (Artifact for how-why-teach, New session
-// for handoff). Each demo loops while on screen, can be paused, and shows its
-// final frame still under reduced motion.
+// pointer presses a button (now and then after selecting a line and typing a
+// request in the prompt), the side pane opens with its loading line, the
+// answer streams in, and the pane's own actions run (Artifact for
+// how-why-teach, New session for handoff). Each demo loops while on screen,
+// can be paused, and shows its final frame still under reduced motion.
 import type { Button } from '../plugins'
 
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -96,8 +96,16 @@ async function prompt(d: Demo, text: string) {
   d.input.textContent = ''
 }
 
+// Types a request in the prompt, as the person does before pressing a button.
+async function request(d: Demo, text: string) {
+  await wait(d, 300)
+  await type(d, d.input, text, 12)
+  await wait(d, 400)
+  return text
+}
+
 /** Opens the pane for `b`, spins its loading line, then streams the answer in. */
-async function answer(d: Demo, b: Button, loading: string, seconds: number, selection?: string) {
+async function answer(d: Demo, b: Button, loading: string, seconds: number, selection?: string, request?: string) {
   d.pane.replaceChildren()
   const head = el('header', '')
   head.append(capsule(b.label, b.color), el('span', 'dim', b.subtitle))
@@ -106,6 +114,7 @@ async function answer(d: Demo, b: Button, loading: string, seconds: number, sele
   d.pane.append(
     head,
     ...(selection ? [el('p', 'dim', `About your selection: “${selection}”`)] : []),
+    ...(request ? [el('p', 'dim', `Your request: “${request}”`)] : []),
     el('hr', ''),
     body,
     el('hr', ''),
@@ -168,15 +177,18 @@ async function howWhyTeach(d: Demo, round: number) {
   const selection = round % 2 === 1 ? write.textContent! : undefined
   // The band notes the selection, as the mod's badge does, until a press spends it.
   const badge = el('span', 'dim', `↳ “${selection?.slice(0, 24)}…” ✕`)
+  // With it, a request typed in the prompt; the press takes it out of the prompt.
+  let asked: string | undefined
   if (selection) {
     await select(d, write)
     pills.at(-1)!.after(badge)
-    await wait(d, 500)
+    asked = await request(d, 'in one paragraph')
   }
   await press(d, pills[k])
   write.classList.remove('sel')
   badge.remove()
-  const { body, foot } = await answer(d, d.buttons[k], 'Thinking…', 9, selection)
+  d.input.textContent = ''
+  const { body, foot } = await answer(d, d.buttons[k], 'Thinking…', 9, selection, asked)
   const actions = ['↻ Again', 'Copy', '◆ Artifact', '✕ Close'].map((t) => capsule(t))
   foot.append(...actions)
   await wait(d, 1200)
@@ -211,9 +223,11 @@ async function handoff(d: Demo) {
   d.band.classList.add('on')
   await wait(d, 700)
 
+  const asked = await request(d, 'focus on the deploy')
   await press(d, pill)
+  d.input.textContent = ''
   const b = d.buttons[0]
-  const { body, foot } = await answer(d, b, 'Writing the handoff…', 14)
+  const { body, foot } = await answer(d, b, 'Writing the handoff…', 14, undefined, asked)
   const actions = ['↻ Again', 'Copy', '⇢ New session', '✕ Close'].map((t) => capsule(t))
   foot.append(...actions)
   await wait(d, 1200)
