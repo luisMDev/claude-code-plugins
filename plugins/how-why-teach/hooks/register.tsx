@@ -62,12 +62,37 @@ async function ask($: EngineInterface, mode: Answer['mode'], title: string, sele
 const WATCH_MS = 500
 let seen: string | null = null
 
-async function watchSelection($: EngineInterface) {
+// The engine keeps the last selection after a click takes its highlight down,
+// and no event says it did. So a selection counts until it is spent: answered
+// once, or dropped with the badge's ✕. The same text selected again stays spent.
+let spent: string | null = null
+
+const current = async ($: EngineInterface) => {
   const text = (await $.ui.selection())?.text.trim() || null
+  return text === spent ? null : text
+}
+
+async function watchSelection($: EngineInterface) {
+  const text = await current($)
   if (text !== seen) {
     seen = text
     await update($, selected, () => text)
   }
+}
+
+async function spend($: EngineInterface, text: string) {
+  spent = text
+  seen = null
+  await update($, selected, () => null)
+}
+
+// A button's press: about the selection when one counts, which it spends.
+async function press($: EngineInterface, mode: Answer['mode'], title: string) {
+  const text = await current($)
+  if (text !== null) {
+    await spend($, text)
+  }
+  await ask($, mode, title, text ?? undefined)
 }
 
 // What the band notes beside the buttons: the lines they will answer about.
@@ -200,14 +225,15 @@ export const register: Register = on => {
       <Box flexShrink={0}>
         {BUTTONS.flatMap((b, i) => [
           ...(i > 0 ? [<Text key={`sep-${b.key}`} dimColor> · </Text>] : []),
-          <Button key={b.key} plain onPress={async () => ask($, b.key, b.label, (await $.ui.selection())?.text.trim() || undefined)}>
+          <Button key={b.key} plain onPress={() => press($, b.key, b.label)}>
             {capsule(Text, b.label, b.color, caps)}
           </Button>,
         ])}
+        {selection !== null && <Text dimColor>{`  ${selectionBadge(selection)} `}</Text>}
         {selection !== null && (
-          <Text dimColor>
-            {`  ${selectionBadge(selection)}`}
-          </Text>
+          <Button key="forget-selection" plain onPress={() => spend($, selection)}>
+            <Text dimColor>✕</Text>
+          </Button>
         )}
       </Box>,
       below,

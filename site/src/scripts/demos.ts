@@ -166,14 +166,16 @@ async function howWhyTeach(d: Demo, round: number) {
   // Every other round, select a line first: the answer is about that line alone.
   const k = round % d.buttons.length
   const selection = round % 2 === 1 ? write.textContent! : undefined
+  // The band notes the selection, as the mod's badge does, until a press spends it.
+  const badge = el('span', 'dim', `↳ “${selection?.slice(0, 24)}…” ✕`)
   if (selection) {
     await select(d, write)
-    // The band notes the selection, as the mod's badge does, until the next prompt.
-    pills.at(-1)!.after(el('span', 'dim', `↳ “${selection.slice(0, 24)}…”`))
+    pills.at(-1)!.after(badge)
     await wait(d, 500)
   }
   await press(d, pills[k])
   write.classList.remove('sel')
+  badge.remove()
   const { body, foot } = await answer(d, d.buttons[k], 'Thinking…', 9, selection)
   const actions = ['↻ Again', 'Copy', '◆ Artifact', '✕ Close'].map((t) => capsule(t))
   foot.append(...actions)

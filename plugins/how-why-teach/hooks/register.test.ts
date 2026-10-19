@@ -249,3 +249,46 @@ test('the band notes the selection the buttons will answer about, and follows it
   await time.advance(500)
   expect(await badge()).toBeUndefined()
 })
+
+test('a selection is spent once answered or dropped with ✕, until another is selected', async ($, on) => {
+  const time = mock.clock(on)
+  let selected: { text: string } | undefined = { text: 'one\ntwo' }
+  on('ui.selection', () => ({ value: selected }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('fs.read', () => ({ value: SKILL }))
+  on('ui.open', () => ({ value: { isPlaced: true as const } }))
+  const forks: string[] = []
+  on('model.fork', (_, e) => {
+    forks.push(e.prompt)
+    return { value: { isAnswered: true as const, text: 'Answer.', usage: USAGE } }
+  })
+  engineBand(on)
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  const band = await $.ui.mount(BAND)
+  const badge = async () =>
+    (await band.findAll({ type: 'Text' })).map(t => t.text?.trim()).find(t => t?.startsWith('↳'))
+
+  await time.advance(500)
+  expect(await badge()).toBe('↳ 2 selected lines')
+
+  // The click on How took the highlight down; the engine still answers the same text.
+  await band.press({ key: 'how' })
+  await time.settle()
+  expect(forks[0]).toContain('> one\n> two')
+  await time.advance(500)
+  expect(await badge()).toBeUndefined()
+  await band.press({ key: 'how' })
+  await time.settle()
+  expect(forks[1]).toContain('to what we are doing in this session')
+
+  // A new selection counts again; ✕ drops it without an answer.
+  selected = { text: 'three' }
+  await time.advance(500)
+  expect(await badge()).toBe('↳ “three”')
+  await band.press({ key: 'forget-selection' })
+  await time.advance(500)
+  expect(await badge()).toBeUndefined()
+  await band.press({ key: 'why' })
+  await time.settle()
+  expect(forks[2]).toContain('to what we are doing in this session')
+})
