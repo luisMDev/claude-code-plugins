@@ -4,6 +4,8 @@ import type { BoxProps, ElementConstructor, EngineInterface, Register, RenderEle
 import type { Handoff } from '../types'
 
 // The status line's capsule: rounded caps (Nerd Font) around a filled body.
+// Only the terminal gets the caps: other surfaces have no Nerd Font and draw
+// their own buttons, so they get the body alone.
 const PILL_BG = '#504945'
 const PILL_FG = '#ebdbb2'
 const COLOR = '#d787af'
@@ -110,14 +112,13 @@ function joinBand(
   )
 }
 
-function capsule(Text: ElementConstructor<TextProps>, label: string, color: string) {
-  return [
-    <Text color={PILL_BG}>{''}</Text>,
+function capsule(Text: ElementConstructor<TextProps>, label: string, color: string, caps: boolean) {
+  const body = (
     <Text backgroundColor={PILL_BG} color={color} bold>
       {` ${label} `}
-    </Text>,
-    <Text color={PILL_BG}>{''}</Text>,
-  ]
+    </Text>
+  )
+  return caps ? [<Text color={PILL_BG}>{''}</Text>, body, <Text color={PILL_BG}>{''}</Text>] : [body]
 }
 
 export const register: Register = on => {
@@ -128,13 +129,15 @@ export const register: Register = on => {
     }
 
     const { Box, Button, Text } = $.ui.resolve(e)
+
+    const caps = e.surface === 'terminal'
     const below = await next(e)
 
     return joinBand(
       Box,
       Text,
       <Button key="handoff" plain onPress={() => write($)}>
-        {capsule(Text, 'Handoff', COLOR)}
+        {capsule(Text, 'Handoff', COLOR, caps)}
       </Button>,
       below,
     )
@@ -142,6 +145,7 @@ export const register: Register = on => {
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Button, Markdown, Text } = $.ui.resolve(e)
+    const caps = e.surface === 'terminal'
     const shown = await read($, handoff)
     const rule = <Text dimColor>{'─'.repeat(Math.max(8, e.props.bodyColumns - 4))}</Text>
 
@@ -159,7 +163,7 @@ export const register: Register = on => {
       <Box flexDirection="column" paddingX={2} paddingY={1} rowGap={1}>
         <Box justifyContent="space-between">
           <Box columnGap={1}>
-            <Box>{capsule(Text, 'Handoff', COLOR)}</Box>
+            <Box>{capsule(Text, 'Handoff', COLOR, caps)}</Box>
             <Text dimColor>For the next session</Text>
           </Box>
           {shown.seconds !== undefined && <Text dimColor>{shown.seconds}s</Text>}
@@ -190,26 +194,26 @@ export const register: Register = on => {
         <Box columnGap={2} flexWrap="wrap">
           {shown.status !== 'loading' && (
             <Button key="again" plain onPress={() => write($)}>
-              {capsule(Text, '↻ Again', PILL_FG)}
+              {capsule(Text, '↻ Again', PILL_FG, caps)}
             </Button>
           )}
           {shown.status === 'done' && (
             <Button key="copy" plain onPress={p => $.ui.copy({ text: shown.text, surface: p.surface })}>
-              {capsule(Text, '⧉ Copy', PILL_FG)}
+              {capsule(Text, '⧉ Copy', PILL_FG, caps)}
             </Button>
           )}
           {shown.status === 'done' && session?.status !== 'starting' && session?.status !== 'done' && (
             <Button key="session" plain onPress={() => start($, shown.text)}>
-              {capsule(Text, '⇢ New session', PILL_FG)}
+              {capsule(Text, '⇢ New session', PILL_FG, caps)}
             </Button>
           )}
           {session?.status === 'done' && (
             <Button key="attach" plain onPress={p => $.ui.copy({ text: `claude attach ${session.text}`, surface: p.surface })}>
-              {capsule(Text, '⧉ Copy attach', PILL_FG)}
+              {capsule(Text, '⧉ Copy attach', PILL_FG, caps)}
             </Button>
           )}
           <Button key="close" plain onPress={() => $.ui.close({ id: PANE })}>
-            {capsule(Text, '✕ Close', PILL_FG)}
+            {capsule(Text, '✕ Close', PILL_FG, caps)}
           </Button>
         </Box>
       </Box>

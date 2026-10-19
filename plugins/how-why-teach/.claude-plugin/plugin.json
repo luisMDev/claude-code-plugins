@@ -1,6 +1,6 @@
 {
   "name": "how-why-teach",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "A band above the prompt with How, Why and Teach buttons; each answers in a side pane from a fork of the session, leaving the main thread untouched.",
   "author": {
     "name": "LuismDev"

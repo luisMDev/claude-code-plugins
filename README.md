@@ -25,7 +25,7 @@ claude plugin install how-why-teach --marketplace luisMDev/claude-code-plugins
 claude plugin install handoff --marketplace luisMDev/claude-code-plugins
 ```
 
-In the desktop app, where `/plugin` does not run: click + next to the prompt box, then Plugins, Add marketplace with `luisMDev/claude-code-plugins`, then Add plugin.
+In the desktop app, where `/plugin` does not run: click + next to the prompt box, then Plugins, Add marketplace with `luisMDev/claude-code-plugins`, then Add plugin. Both plugins run there too: the desktop draws its own buttons, so the capsules lose the Nerd Font caps they have in the terminal. Handoff's New session needs the `claude` CLI on the PATH.
 
 ## Develop
 
