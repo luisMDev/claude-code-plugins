@@ -118,6 +118,11 @@ const { id, buttons } = Astro.props
   .log :global(.warn) {
     color: #ffaf00;
   }
+  .log :global(.sel) {
+    width: fit-content;
+    background: #504945;
+    transition: background 0.6s linear;
+  }
   .log :global(.dim),
   .pane :global(.dim) {
     color: var(--term-dim);
@@ -204,6 +209,9 @@ const { id, buttons } = Astro.props
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
+  }
+  .pane :global(header + .dim) {
+    margin-top: 6px;
   }
   .pane :global(hr) {
     border: 0;

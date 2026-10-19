@@ -36,10 +36,14 @@ function engineBand(on: On, text = 'engine band') {
   })
 }
 
+// Nothing selected on screen: the buttons explain the session as a whole.
+const noSelection = (on: On) => on('ui.selection', () => ({ value: undefined }))
+
 const settle = () => new Promise<void>(resolve => setTimeout(resolve, 50))
 
 test('a button answers in the pane from a fork of the session, never through a prompt', async ($, on) => {
   clock(on)
+  noSelection(on)
   const reads: string[] = []
   on('fs.read', (_, e) => {
     reads.push(e.path)
@@ -85,6 +89,7 @@ test('a button answers in the pane from a fork of the session, never through a p
 
 test('a fork with no answer shows why in the pane', async ($, on) => {
   clock(on)
+  noSelection(on)
   on('ui.open', () => ({ value: { isPlaced: true as const } }))
   on('fs.read', () => ({ value: SKILL }))
   on('model.fork', () => ({ value: { isAnswered: false as const, reason: 'nothing-to-fork' as const, usage: USAGE } }))
@@ -108,6 +113,7 @@ test('the band yields to a survey', async ($, on) => {
 
 test('Artifact lays the answer out, writes it out of git and publishes it', async ($, on) => {
   clock(on)
+  noSelection(on)
   const writes: { path: string; text: string }[] = []
   const published: unknown[] = []
   on('ui.open', () => ({ value: { isPlaced: true as const } }))
@@ -168,6 +174,7 @@ const CAPS = /[]/
 
 test('capsules have Nerd Font caps on the terminal and only their body on desktop', async ($, on) => {
   clock(on)
+  noSelection(on)
   on('fs.read', () => ({ value: SKILL }))
   on('model.fork', () => ({ value: { isAnswered: true as const, text: 'Done.', usage: USAGE } }))
   on('ui.open', () => ({ value: { isPlaced: true as const } }))
@@ -185,4 +192,37 @@ test('capsules have Nerd Font caps on the terminal and only their body on deskto
       expect(texts).toContain(' How ')
     }
   }
+})
+
+test('a selection scopes the answer to that passage, and Again asks about it again', async ($, on) => {
+  clock(on)
+  on('fs.read', () => ({ value: SKILL }))
+  on('ui.open', () => ({ value: { isPlaced: true as const } }))
+  let selected: { text: string } | undefined = { text: '  Wrote 180 lines\nto index.astro  ' }
+  on('ui.selection', () => ({ value: selected }))
+  const forks: string[] = []
+  on('model.fork', (_, e) => {
+    forks.push(e.prompt)
+    return { value: { isAnswered: true as const, text: 'That passage.', usage: USAGE } }
+  })
+  engineBand(on)
+  const band = await $.ui.mount(BAND)
+
+  await band.press({ key: 'why' })
+  await settle()
+  expect(forks[0]).toContain('this passage of the session, which the person selected')
+  expect(forks[0]).toContain('> Wrote 180 lines\n> to index.astro')
+
+  // The press took the highlight down: Again keeps the passage the answer is about.
+  selected = undefined
+  const pane = await $.ui.mount(PANE_TARGET)
+  expect(await pane.find({ type: 'Text', text: 'About your selection: “Wrote 180 lines…”' })).toBeDefined()
+  await pane.press({ key: 'again' })
+  await settle()
+  expect(forks[1]).toBe(forks[0])
+
+  await band.press({ key: 'why' })
+  await settle()
+  expect(forks[2]).toContain('to what we are doing in this session')
+  expect(forks[2]).not.toContain('> ')
 })

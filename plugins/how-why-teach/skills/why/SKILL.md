@@ -11,6 +11,8 @@ Explain **why** the work of this session is being done, and why **this way**. Th
 
 Look back over the session: the request, the constraints stated by the user or the project (CLAUDE.md, docs, existing code), what was tried, what was chosen. Focus on the current piece of work. Do not run new tools unless a fact you need is missing. Never change files.
 
+When the person selected a passage of the session, that passage is the scope: cover it, with the rest of the session as context.
+
 ## What to cover
 
 1. **The problem.** What need or bug the work answers, and what happens if it is not done.

@@ -1,9 +1,10 @@
 // The plugin demos: a scripted Claude Code session per plugin that plays the
 // mod as it really behaves. The band of capsules shows up above the prompt, a
-// pointer presses a button, the side pane opens with its loading line, the
-// answer streams in, and the pane's own actions run (Artifact for
-// how-why-teach, New session for handoff). Each demo loops while on screen,
-// can be paused, and shows its final frame still under reduced motion.
+// pointer presses a button (for how-why-teach, now and then after selecting a
+// line first), the side pane opens with its loading line, the answer streams
+// in, and the pane's own actions run (Artifact for how-why-teach, New session
+// for handoff). Each demo loops while on screen, can be paused, and shows its
+// final frame still under reduced motion.
 import type { Button } from '../plugins'
 
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -72,6 +73,21 @@ async function press(d: Demo, target: HTMLElement) {
   target.classList.remove('pressed')
 }
 
+// The pointer drags across `target`, highlighting it as a mouse selection does.
+async function select(d: Demo, target: HTMLElement) {
+  const box = d.pointer.parentElement!.getBoundingClientRect()
+  const range = document.createRange()
+  range.selectNodeContents(target)
+  const r = range.getBoundingClientRect() // the text itself, not the whole line
+  const y = r.top - box.top + r.height / 2
+  d.pointer.classList.add('on')
+  d.pointer.style.transform = `translate(${r.left - box.left}px, ${y}px)`
+  await wait(d, 750)
+  target.classList.add('sel')
+  d.pointer.style.transform = `translate(${r.right - box.left}px, ${y}px)`
+  await wait(d, 800)
+}
+
 async function prompt(d: Demo, text: string) {
   await wait(d, 400)
   await type(d, d.input, text, 12)
@@ -81,13 +97,20 @@ async function prompt(d: Demo, text: string) {
 }
 
 /** Opens the pane for `b`, spins its loading line, then streams the answer in. */
-async function answer(d: Demo, b: Button, loading: string, seconds: number) {
+async function answer(d: Demo, b: Button, loading: string, seconds: number, selection?: string) {
   d.pane.replaceChildren()
   const head = el('header', '')
   head.append(capsule(b.label, b.color), el('span', 'dim', b.subtitle))
   const body = el('div', 'body')
   const foot = el('footer', '')
-  d.pane.append(head, el('hr', ''), body, el('hr', ''), foot)
+  d.pane.append(
+    head,
+    ...(selection ? [el('p', 'dim', `About your selection: “${selection}”`)] : []),
+    el('hr', ''),
+    body,
+    el('hr', ''),
+    foot,
+  )
   d.pane.classList.add('open')
 
   const spin = el('p', '', '')
@@ -99,7 +122,7 @@ async function answer(d: Demo, b: Button, loading: string, seconds: number) {
   }
   spin.remove()
   head.lastElementChild!.textContent = `${b.subtitle} · ${seconds}s`
-  for (const text of b.answer) {
+  for (const text of (selection && b.selected) || b.answer) {
     const p = el('p', text.startsWith('## ') ? 'h' : '', '')
     if (text.startsWith('## ')) p.style.color = b.color
     body.append(p)
@@ -131,7 +154,7 @@ async function howWhyTeach(d: Demo, round: number) {
   const pills = reset(d, d.buttons)
   await prompt(d, 'build a landing page for the plugins')
   await wait(d, 350)
-  line(d, '● Write(site/src/pages/index.astro)', 'tool')
+  const write = line(d, '● Write(site/src/pages/index.astro)', 'tool')
   await wait(d, 300)
   line(d, '  └ Wrote 180 lines', 'dim')
   await wait(d, 400)
@@ -140,9 +163,13 @@ async function howWhyTeach(d: Demo, round: number) {
   d.band.classList.add('on')
   await wait(d, 700)
 
+  // Every other round, select a line first: the answer is about that line alone.
   const k = round % d.buttons.length
+  const selection = round % 2 === 1 ? write.textContent! : undefined
+  if (selection) await select(d, write)
   await press(d, pills[k])
-  const { body, foot } = await answer(d, d.buttons[k], 'Thinking…', 9)
+  write.classList.remove('sel')
+  const { body, foot } = await answer(d, d.buttons[k], 'Thinking…', 9, selection)
   const actions = ['↻ Again', 'Copy', '◆ Artifact', '✕ Close'].map((t) => capsule(t))
   foot.append(...actions)
   await wait(d, 1200)

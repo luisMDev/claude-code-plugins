@@ -20,30 +20,35 @@ const PILL_FG = '#ebdbb2'
 export const PANE = 'how-why-teach'
 const answer = atom({ plugin: 'how-why-teach', key: 'answer' } as const, null)
 
-// The skill's instructions without their frontmatter, as the fork's question.
-export const forkPrompt = (skill: string) =>
+// The skill's instructions without their frontmatter, as the fork's question;
+// with a selection, scoped to that passage of the session.
+export const forkPrompt = (skill: string, selection?: string) =>
   `${skill.replace(/^---\n[\s\S]*?\n---\n/, '').trim()}\n\n` +
-  'Apply these instructions now to what we are doing in this session. Do not call tools.'
+  (selection === undefined
+    ? 'Apply these instructions now to what we are doing in this session. Do not call tools.'
+    : 'Apply these instructions now to this passage of the session, which the person selected. ' +
+      'Explain the passage, using the rest of the session as context. Do not call tools.\n\n' +
+      selection.replace(/^/gm, '> '))
 
 // Only the latest press writes its answer; an older fork that lands late is dropped.
 let latest = 0
 
-async function ask($: EngineInterface, mode: Answer['mode'], title: string) {
+async function ask($: EngineInterface, mode: Answer['mode'], title: string, selection: string | undefined) {
   const run = ++latest
   const startedAt = await $.clock.now()
-  await update($, answer, () => ({ mode, status: 'loading' as const, text: '' }))
+  await update($, answer, () => ({ mode, selection, status: 'loading' as const, text: '' }))
 
   let result: Answer
   try {
     await $.ui.open({ id: PANE, title })
     const skill = await $.fs.read(`${$.plugin.root}/skills/${mode}/SKILL.md`)
-    const reply = await $.model.fork({ prompt: forkPrompt(skill) })
+    const reply = await $.model.fork({ prompt: forkPrompt(skill, selection) })
     const seconds = Math.round(((await $.clock.now()) - startedAt) / 1000)
     result = reply.isAnswered
-      ? { mode, status: 'done', text: reply.text, seconds }
-      : { mode, status: 'error', text: `No answer: ${reply.reason}`, seconds }
+      ? { mode, selection, status: 'done', text: reply.text, seconds }
+      : { mode, selection, status: 'error', text: `No answer: ${reply.reason}`, seconds }
   } catch (error) {
-    result = { mode, status: 'error', text: String(error) }
+    result = { mode, selection, status: 'error', text: String(error) }
   }
 
   if (run === latest) {
@@ -134,6 +139,12 @@ function joinBand(
   )
 }
 
+// The selection's first line, cut short, for the pane's header.
+const snippet = (text: string) => {
+  const first = text.split('\n')[0]!
+  return first.length > 60 || text.includes('\n') ? `${first.slice(0, 60)}…` : first
+}
+
 function capsule(Text: ElementConstructor<TextProps>, label: string, color: string, caps: boolean) {
   const body = (
     <Text backgroundColor={PILL_BG} color={color} bold>
@@ -161,7 +172,7 @@ export const register: Register = on => {
       <Box flexShrink={0}>
         {BUTTONS.flatMap((b, i) => [
           ...(i > 0 ? [<Text key={`sep-${b.key}`} dimColor> · </Text>] : []),
-          <Button key={b.key} plain onPress={() => ask($, b.key, b.label)}>
+          <Button key={b.key} plain onPress={async () => ask($, b.key, b.label, (await $.ui.selection())?.text.trim() || undefined)}>
             {capsule(Text, b.label, b.color, caps)}
           </Button>,
         ])}
@@ -194,6 +205,7 @@ export const register: Register = on => {
           </Box>
           {shown.seconds !== undefined && <Text dimColor>{shown.seconds}s</Text>}
         </Box>
+        {shown.selection !== undefined && <Text dimColor>About your selection: “{snippet(shown.selection)}”</Text>}
         {rule}
         {shown.status === 'loading' && (
           <Box flexDirection="column">
@@ -219,7 +231,7 @@ export const register: Register = on => {
         )}
         <Box columnGap={2} flexWrap="wrap">
           {shown.status !== 'loading' && (
-            <Button key="again" plain onPress={() => ask($, mode.key, mode.label)}>
+            <Button key="again" plain onPress={() => ask($, mode.key, mode.label, shown.selection)}>
               {capsule(Text, '↻ Again', PILL_FG, caps)}
             </Button>
           )}

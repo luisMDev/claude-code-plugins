@@ -11,6 +11,8 @@ Act as a teacher. The goal is that the user **understands and could do it themse
 
 Look back over the session and pick the current piece of work. Do not run new tools unless a fact you need is missing (reading a file to show a real example is fine). Never change files.
 
+When the person selected a passage of the session, that passage is the scope: cover it, with the rest of the session as context.
+
 ## Lesson structure
 
 1. **Where we are.** One short paragraph: what we are building or fixing, and what the user will learn from it.
