@@ -1,5 +1,5 @@
 import type { On } from 'claude-code'
-import { expect, test } from 'claude-code/testing'
+import { expect, mock, test } from 'claude-code/testing'
 
 import { PANE } from './register'
 
@@ -225,4 +225,27 @@ test('a selection scopes the answer to that passage, and Again asks about it aga
   await settle()
   expect(forks[2]).toContain('to what we are doing in this session')
   expect(forks[2]).not.toContain('> ')
+})
+
+test('the band notes the selection the buttons will answer about, and follows it', async ($, on) => {
+  const time = mock.clock(on)
+  let selected: { text: string } | undefined
+  on('ui.selection', () => ({ value: selected }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  engineBand(on)
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  const band = await $.ui.mount(BAND)
+  const badge = async () =>
+    (await band.findAll({ type: 'Text' })).map(t => t.text?.trim()).find(t => t?.startsWith('↳'))
+
+  expect(await badge()).toBeUndefined()
+  selected = { text: 'one\ntwo\nthree' }
+  await time.advance(500)
+  expect(await badge()).toBe('↳ 3 selected lines')
+  selected = { text: ' Wrote 180 lines to the landing page ' }
+  await time.advance(500)
+  expect(await badge()).toBe('↳ “Wrote 180 lines to the l…”')
+  selected = undefined
+  await time.advance(500)
+  expect(await badge()).toBeUndefined()
 })

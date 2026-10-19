@@ -19,6 +19,7 @@ const PILL_FG = '#ebdbb2'
 
 export const PANE = 'how-why-teach'
 const answer = atom({ plugin: 'how-why-teach', key: 'answer' } as const, null)
+const selected = atom({ plugin: 'how-why-teach', key: 'selected' } as const, null)
 
 // The skill's instructions without their frontmatter, as the fork's question;
 // with a selection, scoped to that passage of the session.
@@ -54,6 +55,25 @@ async function ask($: EngineInterface, mode: Answer['mode'], title: string, sele
   if (run === latest) {
     await update($, answer, () => result)
   }
+}
+
+// No event says the selection changed, so a timer reads it and writes it only
+// when it did: the band redraws then, never on the ticks in between.
+const WATCH_MS = 500
+let seen: string | null = null
+
+async function watchSelection($: EngineInterface) {
+  const text = (await $.ui.selection())?.text.trim() || null
+  if (text !== seen) {
+    seen = text
+    await update($, selected, () => text)
+  }
+}
+
+// What the band notes beside the buttons: the lines they will answer about.
+function selectionBadge(text: string) {
+  const lines = text.split('\n').length
+  return lines > 1 ? `↳ ${lines} selected lines` : `↳ “${text.length > 24 ? `${text.slice(0, 24)}…` : text}”`
 }
 
 // Keeps the pages out of git without touching the project's .gitignore.
@@ -155,6 +175,13 @@ function capsule(Text: ElementConstructor<TextProps>, label: string, color: stri
 }
 
 export const register: Register = on => {
+  on('session.start', async ($, e, next) => {
+    if (e.isInteractive) {
+      $.clock.every(WATCH_MS, () => void watchSelection($))
+    }
+    return next(e)
+  })
+
   // Shares the row of buttons with the mods beneath, the engine's band under it.
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey) {
@@ -164,6 +191,7 @@ export const register: Register = on => {
     const { Box, Button, Text } = $.ui.resolve(e)
 
     const caps = e.surface === 'terminal'
+    const selection = await read($, selected)
     const below = await next(e)
 
     return joinBand(
@@ -176,6 +204,11 @@ export const register: Register = on => {
             {capsule(Text, b.label, b.color, caps)}
           </Button>,
         ])}
+        {selection !== null && (
+          <Text dimColor>
+            {`  ${selectionBadge(selection)}`}
+          </Text>
+        )}
       </Box>,
       below,
     )

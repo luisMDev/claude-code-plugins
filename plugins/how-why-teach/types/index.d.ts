@@ -11,6 +11,7 @@ export type Answer = {
 
 declare module 'claude-code' {
   interface PluginState {
-    'how-why-teach': { answer: Answer | null }
+    // selected: what the person has selected on screen, as the band last saw it.
+    'how-why-teach': { answer: Answer | null; selected: string | null }
   }
 }
