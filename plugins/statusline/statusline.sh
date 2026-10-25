@@ -1,16 +1,9 @@
 #!/bin/bash
 # Status line, one line of capsules: model + effort bar [+ ultracode], then the
-# repo pill (where the session works, branch, sync, changes, PR), the usage
-# pill (5-hour and weekly windows), then claude-powerline's context pill.
-# The plugin's hooks/register.ts makes Claude Code run it as the status line.
+# repo pill (where the session works, branch, sync, changes, PR), then the
+# context pill. The plugin's hooks/register.ts makes Claude Code run it as the
+# status line.
 input=$(cat)
-here=$(dirname "${BASH_SOURCE[0]}")
-
-# powerline (context). model/directory/git/block/weekly are disabled in the
-# claude-powerline.json beside this script because our own capsules carry them.
-# Pinned, not @latest: npx runs it on every refresh for everyone who installs
-# the plugin, so a new release is reviewed and bumped here first.
-powerline=$(printf '%s' "$input" | npx -y @owloops/claude-powerline@1.32.5 --theme=gruvbox --style=capsule --config="$here/claude-powerline.json")
 
 read -r model effort cwd wt_name transcript pr_num pr_url pr_review pr_kind < <(printf '%s' "$input" | jq -r '[
   (.model.display_name // .model.id // "Claude"),
@@ -29,6 +22,22 @@ transcript=${transcript//$' '/ }
 
 RESET=$'\e[0m'; DIM=$'\e[2m'; BOLD=$'\e[1m'
 C_MODEL=$'\e[38;5;214m'; C_DIR=$'\e[38;5;109m'; C_WT=$'\e[38;5;142m'; C_SEP=$'\e[38;5;242m'
+C_OK=$'\e[38;5;142m'; C_MOD=$'\e[38;5;214m'; C_BAD=$'\e[38;5;167m'
+
+segments() { # $1 = segments filled, $2 = segments in all, $3 = colour of the filled ones
+  local i out=""
+  for (( i = 0; i < $2; i++ )); do
+    if [ "$i" -lt "$1" ]; then out+="${3}━"; else out+="${DIM}${C_SEP}─${RESET}"; fi
+  done
+  printf '%s' "${out}${RESET}"
+}
+level() { # $1 = % used: green, yellow from 50, red from 80
+  if [ "$1" -ge 80 ]; then printf '%s' "$C_BAD"; elif [ "$1" -ge 50 ]; then printf '%s' "$C_MOD"; else printf '%s' "$C_OK"; fi
+}
+gauge() { # $1 = % used: a 10-segment bar, half a segment and up filling one
+  local pct=$(( $1 > 100 ? 100 : $1 ))
+  segments $(( (pct + 5) / 10 )) 10 "$(level "$pct")"
+}
 
 # Effort: low → max as a thin 5-segment bar, the reached segments coloured.
 case "$effort" in
@@ -39,12 +48,8 @@ case "$effort" in
   max) n=5; C_EFF=$'\e[38;5;167m' ;;
   *) n=0; C_EFF="" ;;
 esac
-eff=""
 if [ "$n" -gt 0 ]; then
-  for i in 0 1 2 3 4; do
-    if [ "$i" -lt "$n" ]; then eff+="${C_EFF}━"; else eff+="${DIM}${C_SEP}─${RESET}"; fi
-  done
-  eff+="${RESET}"
+  eff=$(segments "$n" 5 "$C_EFF")
 else
   eff="${DIM}effort ?${RESET}"
 fi
@@ -76,8 +81,7 @@ ultra_tag=""
 # Repo pill: where the session works (⌂ main checkout, ↳ wt:<name> for a
 # linked worktree, plain path outside git), branch, ahead/behind its upstream
 # (last fetch), uncommitted changes, and the PR Claude Code reports.
-C_BRANCH=$'\e[38;5;175m'; C_OK=$'\e[38;5;142m'; C_UP=$'\e[38;5;108m'; C_DOWN=$'\e[38;5;208m'
-C_MOD=$'\e[38;5;214m'; C_BAD=$'\e[38;5;167m'
+C_BRANCH=$'\e[38;5;175m'; C_UP=$'\e[38;5;108m'; C_DOWN=$'\e[38;5;208m'
 g() { git -C "$cwd" --no-optional-locks "$@" 2>/dev/null; }
 if top=$(g rev-parse --show-toplevel) && [ -n "$top" ]; then
   gitdir=$(g rev-parse --absolute-git-dir)
@@ -127,34 +131,17 @@ if [ "$pr_num" != "-" ]; then
   repo+="  ${BOLD}${pr}${RESET}"
 fi
 
-# Usage pill: the 5-hour and weekly windows Claude Code reports, each with
-# its used % (yellow from 50, red from 80) and the time left until it resets.
-now=$(date +%s)
-window() { # $1 = label, $2 = used %, $3 = resets_at (epoch s)
-  local pct=${2%.*} c=$C_OK left mins
-  [ "$pct" -ge 50 ] && c=$C_MOD
-  [ "$pct" -ge 80 ] && c=$C_BAD
-  left=""
-  if [ "$3" != "-" ]; then
-    mins=$(( ($3 - now) / 60 )); [ "$mins" -lt 0 ] && mins=0
-    if [ "$mins" -ge 1440 ]; then left="$((mins / 1440))d$((mins % 1440 / 60))h"
-    elif [ "$mins" -ge 60 ]; then left="$((mins / 60))h$((mins % 60))m"
-    else left="${mins}m"; fi
-    left=" ${DIM}${C_DIR}${left}${RESET}"
-  fi
-  printf '%s' "${DIM}${C_DIR}${1}${RESET} ${c}${pct}%${RESET}${left}"
-}
-read -r h5_pct h5_reset d7_pct d7_reset < <(printf '%s' "$input" | jq -r '[
-  (.rate_limits.five_hour.used_percentage // "-" | tostring),
-  (.rate_limits.five_hour.resets_at // "-" | tostring),
-  (.rate_limits.seven_day.used_percentage // "-" | tostring),
-  (.rate_limits.seven_day.resets_at // "-" | tostring)
+# Context pill: the tokens in the window in thousands, the bar filled to what
+# is used, and the % left. No usage pill: Claude Code draws the 5-hour and
+# weekly windows on the same line already.
+read -r ctx_tokens ctx_left < <(printf '%s' "$input" | jq -r '[
+  (.context_window.current_usage // {} | (.input_tokens // 0) + (.cache_creation_input_tokens // 0) + (.cache_read_input_tokens // 0)),
+  (.context_window.remaining_percentage // 100 | floor)
 ] | @tsv')
-usage=""
-[ "$h5_pct" != "-" ] && usage+="$(window 5h "$h5_pct" "$h5_reset")"
-[ "$d7_pct" != "-" ] && usage+="${usage:+  }$(window 7d "$d7_pct" "$d7_reset")"
+ctx_used=$(( 100 - ctx_left ))
+context="$(( (ctx_tokens + 500) / 1000 ))k $(gauge "$ctx_used") $(level "$ctx_used")(${ctx_left}%)${RESET}"
 
-# Capsule like powerline's: rounded caps in the pill colour around a filled body.
+# Capsule: rounded caps (Nerd Font) in the pill colour around a filled body.
 PILL_BG='80;73;69'; DIR_BG='60;56;54'; PILL_FG=$'\e[38;2;235;219;178m'
 pill() { # $1 = bg rgb, $2 = body (may carry its own fg colours)
   local body=${2//$RESET/$RESET$'\e[48;2;'$1'm'}
@@ -163,4 +150,4 @@ pill() { # $1 = bg rgb, $2 = body (may carry its own fg colours)
 printf '%s %s %s' \
   "$(pill "$PILL_BG" "${C_MODEL}${BOLD}${model}${RESET} ${eff}${ultra_tag}")" \
   "$(pill "$DIR_BG" "$repo")" \
-  "${usage:+$(pill "$PILL_BG" "$usage") }$powerline"
+  "$(pill "$PILL_BG" "$context")"
