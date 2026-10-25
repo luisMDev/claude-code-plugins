@@ -16,6 +16,12 @@ const marketplace: { name: string; plugins: { name: string; source: string }[] }
   '.claude-plugin/marketplace.json',
 )
 
+// The claude-powerline the status line script pins, so its install prompt warms that same version.
+const POWERLINE = readFileSync(join(ROOT, 'plugins/statusline/statusline.sh'), 'utf8').match(
+  /@owloops\/claude-powerline@[\d.]+/,
+)?.[0]
+if (!POWERLINE) throw new Error('plugins/statusline/statusline.sh no longer pins @owloops/claude-powerline')
+
 export const TITLE = 'luismdev marketplace' // the site's name; the marketplace's id stays MARKETPLACE
 export const REPO = 'luisMDev/claude-code-plugins'
 export const MARKETPLACE = marketplace.name
@@ -131,7 +137,7 @@ const EXTRAS: Record<string, Pick<Plugin, 'hooks' | 'draws' | 'buttons' | 'needs
     buttons: [],
     needs: ['bash', 'jq', 'git', 'npx'],
     setup: [
-      'Run `npx -y @owloops/claude-powerline@latest --help` once, so the first status line does not wait for the download of its context capsule.',
+      `Run \`npx -y ${POWERLINE} --help\` once, so the first status line does not wait for the download of its context capsule.`,
       "If ~/.claude/settings.json or this project's .claude/settings.json or .claude/settings.local.json sets statusLine, tell me the plugin's status line takes its place while the plugin is enabled, and offer to remove that key.",
       'Tell me the capsules have rounded ends only with a Nerd Font in my terminal.',
     ],

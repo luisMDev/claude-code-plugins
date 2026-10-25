@@ -8,7 +8,9 @@ here=$(dirname "${BASH_SOURCE[0]}")
 
 # powerline (context). model/directory/git/block/weekly are disabled in the
 # claude-powerline.json beside this script because our own capsules carry them.
-powerline=$(printf '%s' "$input" | npx -y @owloops/claude-powerline@latest --theme=gruvbox --style=capsule --config="$here/claude-powerline.json")
+# Pinned, not @latest: npx runs it on every refresh for everyone who installs
+# the plugin, so a new release is reviewed and bumped here first.
+powerline=$(printf '%s' "$input" | npx -y @owloops/claude-powerline@1.32.5 --theme=gruvbox --style=capsule --config="$here/claude-powerline.json")
 
 read -r model effort cwd wt_name transcript pr_num pr_url pr_review pr_kind < <(printf '%s' "$input" | jq -r '[
   (.model.display_name // .model.id // "Claude"),
