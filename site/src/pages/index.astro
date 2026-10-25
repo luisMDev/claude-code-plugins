@@ -5,25 +5,37 @@ import '@fontsource/jetbrains-mono/400.css'
 import '@fontsource/jetbrains-mono/700.css'
 import Footer from '../components/Footer.astro'
 import Terminal from '../components/Terminal.astro'
-import { MARKETPLACE, REPO, TITLE, plugins } from '../plugins'
+import { MARKETPLACE, REPO, TITLE, plugins, type Plugin } from '../plugins'
 
 const github = `https://github.com/${REPO}`
 // The title's rule is as long as its longest line, so it never wraps.
 const rule = '='.repeat(Math.max(...TITLE.split(' ').map((word) => word.length)))
 
-// What the install buttons copy: a prompt to paste into Claude Code, which runs the commands.
-const prompt = (names: string[]) => {
-  const one = names.length === 1
+// What the install buttons copy: a prompt to paste into Claude Code, which runs
+// the commands, then checks what each plugin's scripts need and does its setup.
+const prompt = (list: Plugin[]) => {
+  const one = list.length === 1
+  const steps = (p: Plugin) => [
+    ...(p.needs
+      ? [
+          `Check that ${p.needs.join(', ')} are on my PATH. For each one missing, tell me the command that installs it on my system and run it once I say yes.`,
+        ]
+      : []),
+    ...(p.setup ?? []),
+  ]
   return [
     `Install ${one ? 'this Claude Code plugin' : 'these Claude Code plugins'} from the ${MARKETPLACE} marketplace (github.com/${REPO}) by running:`,
     '',
     `claude plugin marketplace add ${REPO}`,
-    ...names.map((name) => `claude plugin install ${name}@${MARKETPLACE}`),
+    ...list.map((p) => `claude plugin install ${p.name}@${MARKETPLACE}`),
+    ...list
+      .filter((p) => steps(p).length > 0)
+      .flatMap((p) => ['', `For ${p.name}:`, ...steps(p).map((s) => `- ${s}`)]),
     '',
-    `Then tell me to restart Claude Code so ${one ? 'it loads' : 'they load'}.`,
+    `Last, tell me to restart Claude Code so ${one ? 'it loads' : 'they load'}.`,
   ].join('\n')
 }
-const everything = prompt(plugins.map((p) => p.name))
+const everything = prompt(plugins)
 const copied = 'Install prompt copied. Paste it into Claude Code.'
 ---
 
@@ -35,7 +47,7 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
     <title>{TITLE} · Claude Code plugins</title>
     <meta
       name="description"
-      content="Claude Code plugins and mods by LuismDev: How, Why and Teach buttons, and a Handoff button, above the prompt."
+      content="Claude Code plugins and mods by LuismDev: How, Why and Teach buttons and a Handoff button above the prompt, and a status line of capsules under it."
     />
     <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}/favicon.svg`} />
     <script is:inline>
@@ -89,8 +101,9 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
         </h1>
         <div class="copy">
           <p class="lead">
-            Small plugins that put buttons above the Claude Code prompt. Each one answers in a side pane from a fork of
-            the session, so the main thread never gets an extra turn.
+            Small plugins around the Claude Code prompt. Buttons above it answer in a side pane from a fork of the
+            session, so the main thread never gets an extra turn; a status line under it shows where you are, the
+            branch and its PR, your usage and the context window.
           </p>
           <button type="button" class="primary" data-copy={everything} data-toast={copied} data-done="Copied">
             <span>Copy install prompt</span>
@@ -108,8 +121,8 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
         <aside class="rail">
           <h2>plugins<sup>{plugins.length}</sup></h2>
           <p class="muted">
-            Built on mods: small TypeScript hooks that draw their own buttons and panes in the terminal. Each window plays
-            what the plugin really does.
+            Built on mods: small TypeScript hooks that draw their own buttons and panes in the terminal, or set its
+            status line. Each window plays what the plugin really does.
           </p>
           <div class="actions">
             <a class="link" href={github}>SOURCE↗</a>
@@ -136,7 +149,7 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
                     </dd>
                     <dt>Draws</dt>
                     <dd>{p.draws}</dd>
-                    <dt>Skills</dt>
+                    {p.skills.length > 0 && <dt>Skills</dt>}
                     {p.skills.map((s) => (
                       <dd title={s.description.split(' Use when')[0]}>
                         <code>
@@ -144,12 +157,20 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
                         </code>
                       </dd>
                     ))}
+                    {p.needs && <dt>Needs</dt>}
+                    {p.needs && (
+                      <dd>
+                        {p.needs.map((n) => (
+                          <code>{n}</code>
+                        ))}
+                      </dd>
+                    )}
                   </dl>
                   <div class="actions">
                     <button
                       type="button"
                       class="install"
-                      data-copy={prompt([p.name])}
+                      data-copy={prompt([p])}
                       data-toast={`Install prompt for ${p.name} copied. Paste it into Claude Code.`}
                     >
                       <svg viewBox="0 0 8 7" aria-hidden="true">
@@ -175,8 +196,9 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
         </aside>
         <div class="copy">
           <p>
-            Copy the prompt and paste it into Claude Code: it adds this marketplace and installs every plugin. To pick
-            one, use the <span class="accent">install</span> button next to it.
+            Copy the prompt and paste it into Claude Code: it adds this marketplace, installs every plugin, and checks
+            the tools the status line script runs. To pick one, use the <span class="accent">install</span> button next
+            to it.
           </p>
           <button type="button" class="primary" data-copy={everything} data-toast={copied} data-done="Copied">
             <span>Copy install prompt</span>

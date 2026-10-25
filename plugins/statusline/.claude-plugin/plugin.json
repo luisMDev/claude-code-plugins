@@ -1,0 +1,6 @@
+{
+  "name": "statusline",
+  "version": "0.1.0",
+  "description": "A status line of capsules under the prompt: model and effort, where the session works (repo or worktree, branch, ahead/behind, changes, PR), the 5-hour and weekly usage windows, and the context window.",
+  "author": { "name": "LuismDev" }
+}

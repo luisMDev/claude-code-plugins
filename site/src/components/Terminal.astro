@@ -1,7 +1,7 @@
 ---
 // A Claude Code window that plays a plugin's demo (scripts/demos.ts): the
-// session on the left, the band above the prompt, and the plugin's pane
-// sliding in from the right, driven by a pointer.
+// session on the left, the band above the prompt, the status line under it,
+// and the plugin's pane sliding in from the right, driven by a pointer.
 import type { Button } from '../plugins'
 
 interface Props {
@@ -22,6 +22,7 @@ const { id, buttons } = Astro.props
       <div class="log" data-log></div>
       <div class="band" data-band></div>
       <div class="prompt"><span class="clay">❯</span> <span data-input></span><span class="caret"></span></div>
+      <div class="status" data-status></div>
       <p class="hint">? for shortcuts</p>
     </div>
     <aside class="pane" data-pane></aside>
@@ -148,7 +149,7 @@ const { id, buttons } = Astro.props
   .term :global(.pill) {
     font-weight: 700;
     color: var(--c, #ebdbb2);
-    background: #504945;
+    background: var(--bg, #504945);
     border-radius: 999px;
     padding: 0 0.8em;
     white-space: nowrap;
@@ -181,6 +182,34 @@ const { id, buttons } = Astro.props
     50% {
       opacity: 0;
     }
+  }
+  .status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+    margin-top: 6px;
+  }
+  .status:empty {
+    display: none;
+  }
+  /* A narrow window wraps a capsule between its segments, never inside one. */
+  .status :global(.pill) {
+    font-weight: 400;
+    white-space: normal;
+    border-radius: 0.8em;
+  }
+  .status :global(.pill > *) {
+    white-space: nowrap;
+  }
+  .status :global(.pill b) {
+    font-weight: 700;
+  }
+  .status :global(.pill .pr) {
+    font-weight: 700;
+    text-decoration: underline dotted;
+  }
+  .status :global(.pill.flash) {
+    box-shadow: 0 0 0 1px var(--accent);
   }
   .hint {
     margin: 4px 0 0;
