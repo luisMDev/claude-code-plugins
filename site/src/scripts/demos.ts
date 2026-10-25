@@ -3,8 +3,10 @@
 // pointer presses a button (now and then after selecting a line and typing a
 // request in the prompt), the side pane opens with its loading line, the
 // answer streams in, and the pane's own actions run (Artifact for
-// how-why-teach, New session for handoff). Each demo loops while on screen,
-// can be paused, and shows its final frame still under reduced motion.
+// how-why-teach, New session for handoff). The statusline demo has no band:
+// its status line under the prompt follows the session's branch, changes, PR,
+// usage and context. Each demo loops while on screen, can be paused, and shows
+// its final frame still under reduced motion.
 import type { Button } from '../plugins'
 
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -14,6 +16,7 @@ interface Demo {
   root: HTMLElement
   log: HTMLElement
   band: HTMLElement
+  status: HTMLElement
   input: HTMLElement
   pane: HTMLElement
   pointer: HTMLElement
@@ -161,6 +164,7 @@ async function close(d: Demo, foot: HTMLElement) {
 function reset(d: Demo, capsules: Button[]) {
   d.log.replaceChildren()
   d.band.replaceChildren()
+  d.status.replaceChildren()
   d.input.textContent = ''
   d.pane.classList.remove('open')
   d.band.classList.remove('on')
@@ -255,9 +259,137 @@ async function handoff(d: Demo) {
   await close(d, foot)
 }
 
+// The 256-colour palette of plugins/statusline/statusline.sh, and its effort
+// bar's colour from low to max.
+const C = {
+  model: '#ffaf00',
+  dir: '#87afaf',
+  branch: '#d787af',
+  ok: '#afaf00',
+  up: '#87af87',
+  mod: '#ffaf00',
+  bad: '#d75f5f',
+  sep: '#6c6c6c',
+}
+const EFFORT = ['#87af87', '#afaf00', '#ffaf00', '#ff8700', '#d75f5f']
+
+interface Status {
+  effort: number // segments of the bar reached, 1 (low) to 5 (max)
+  branch: string
+  upstream: boolean
+  changes: [staged: number, modified: number, untracked: number]
+  pr?: { n: number; approved?: boolean }
+  usage: [fiveHour: number, sevenDay: number] // used %
+  context: [tokens: number, left: number]
+}
+
+function ink(text: string, color: string, dim = false) {
+  const s = el('span', '', text)
+  s.style.color = color
+  if (dim) s.style.opacity = '0.6'
+  return s
+}
+
+function cap(bg: string, ...parts: HTMLElement[]) {
+  const c = el('span', 'pill')
+  c.style.setProperty('--bg', bg)
+  for (const [i, part] of parts.entries()) c.append(...(i ? [' ', part] : [part]))
+  return c
+}
+
+// Draws the four capsules as the script prints them; one whose text changed flashes.
+function drawStatus(d: Demo, s: Status) {
+  const before = [...d.status.children].map((c) => c.textContent)
+  const model = el('b', '', 'Opus 5.5')
+  model.style.color = C.model
+  const bar = el('span', '')
+  for (let i = 0; i < 5; i++) bar.append(i < s.effort ? ink('━', EFFORT[s.effort - 1]) : ink('─', C.sep, true))
+
+  const [staged, modified, untracked] = s.changes
+  const changes = [
+    ...(staged ? [ink(`+${staged}`, C.ok)] : []),
+    ...(modified ? [ink(`~${modified}`, C.mod)] : []),
+    ...(untracked ? [ink(`?${untracked}`, C.dir, true)] : []),
+  ]
+  const pr = s.pr ? [el('span', 'pr', `PR #${s.pr.n}`), ...(s.pr.approved ? [ink('✓', C.ok)] : [])] : []
+  const usage = (label: string, pct: number, left: string) => [
+    ink(label, C.dir, true),
+    ink(`${pct}%`, pct >= 80 ? C.bad : pct >= 50 ? C.mod : C.ok),
+    ink(left, C.dir, true),
+  ]
+  const [tokens, left] = s.context
+
+  d.status.replaceChildren(
+    cap('#504945', model, bar),
+    cap(
+      '#3c3836',
+      ink('⌂ claude-code-plugins', C.dir),
+      ink(`⎇ ${s.branch}`, C.branch),
+      ...(s.upstream ? [] : [ink('no upstream', C.sep, true)]),
+      ...(changes.length ? changes : [ink('✓', C.ok)]),
+      ...pr,
+    ),
+    cap('#504945', ...usage('5h', s.usage[0], '2h41m'), ...usage('7d', s.usage[1], '3d4h')),
+    cap('#458588', el('span', '', `◔ ${tokens.toLocaleString('en-US')} (${left}%)`)),
+  )
+  for (const [i, c] of [...d.status.children].entries()) {
+    if (before.length && c.textContent !== before[i]) {
+      c.classList.add('flash')
+      setTimeout(() => c.classList.remove('flash'), 700)
+    }
+  }
+}
+
+async function statusline(d: Demo) {
+  reset(d, [])
+  let s: Status = {
+    effort: 3,
+    branch: 'main',
+    upstream: true,
+    changes: [0, 0, 0],
+    usage: [12, 41],
+    context: [18_240, 91],
+  }
+  const show = (change: Partial<Status>) => drawStatus(d, (s = { ...s, ...change }))
+  show({})
+
+  await prompt(d, 'add a status line plugin')
+  await wait(d, 350)
+  line(d, '● Bash(git switch -c feat/statusline)', 'tool')
+  line(d, "  └ Switched to a new branch 'feat/statusline'", 'dim')
+  show({ branch: 'feat/statusline', upstream: false })
+  await wait(d, 1100)
+  line(d, '● Write(plugins/statusline/hooks/register.ts)', 'tool')
+  line(d, '  └ Wrote 18 lines', 'dim')
+  show({ changes: [0, 0, 1], context: [41_630, 79] })
+  await wait(d, 1100)
+  line(d, '● Edit(README.md)', 'tool')
+  line(d, '  └ Added 6 lines', 'dim')
+  show({ changes: [0, 1, 1], usage: [15, 41], context: [52_310, 73] })
+  await wait(d, 1100)
+  line(d, '● Bash(git add . && git commit -m "Add statusline")', 'tool')
+  line(d, '  └ 2 files changed', 'dim')
+  show({ changes: [0, 0, 0] })
+  await wait(d, 1100)
+  line(d, '● Bash(git push -u origin feat/statusline && gh pr create --fill)', 'tool')
+  line(d, '  └ github.com/luisMDev/claude-code-plugins/pull/7', 'dim')
+  show({ upstream: true, pr: { n: 7 }, usage: [18, 42], context: [64_000, 62] })
+  await wait(d, 400)
+  line(d, '✻ Churned for 1m 12s', 'clay')
+  await wait(d, 1800)
+  show({ pr: { n: 7, approved: true } })
+  await wait(d, 1400)
+
+  await prompt(d, '/effort max')
+  line(d, '  └ Set effort level to max', 'dim')
+  show({ effort: 5 })
+  await wait(d, 3200)
+}
+
 const SCRIPTS: Record<string, (d: Demo, round: number) => Promise<void>> = {
   'how-why-teach': howWhyTeach,
   handoff,
+  statusline,
 }
 
 export function start(root: HTMLElement) {
@@ -269,6 +401,7 @@ export function start(root: HTMLElement) {
     root,
     log: root.querySelector('[data-log]')!,
     band: root.querySelector('[data-band]')!,
+    status: root.querySelector('[data-status]')!,
     input: root.querySelector('[data-input]')!,
     pane: root.querySelector('[data-pane]')!,
     pointer: root.querySelector('[data-pointer]')!,

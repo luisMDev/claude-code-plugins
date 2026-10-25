@@ -14,6 +14,11 @@
       "name": "handoff",
       "source": "./plugins/handoff",
       "description": "A Handoff button above the prompt that writes a handoff of the session and starts a new background session from it."
+    },
+    {
+      "name": "statusline",
+      "source": "./plugins/statusline",
+      "description": "A status line of capsules under the prompt: model and effort, repo, branch, changes and PR, usage windows, context."
     }
   ]
 }

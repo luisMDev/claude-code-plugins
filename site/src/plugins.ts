@@ -38,11 +38,13 @@ export interface Plugin extends Manifest {
   draws: string
   buttons: Button[]
   skills: Skill[]
+  needs?: string[] // commands its scripts run, which the install prompt checks
+  setup?: string[] // what else the install prompt asks Claude Code to do for it
 }
 
 // What the manifests do not say: what each mod hooks and draws, and its buttons
 // as the band shows them (colors from each plugin's hooks/register.tsx).
-const EXTRAS: Record<string, Pick<Plugin, 'hooks' | 'draws' | 'buttons'>> = {
+const EXTRAS: Record<string, Pick<Plugin, 'hooks' | 'draws' | 'buttons' | 'needs' | 'setup'>> = {
   'how-why-teach': {
     hooks: ['ui.render'],
     draws: 'A band above the prompt and a pane beside the transcript',
@@ -121,6 +123,17 @@ const EXTRAS: Record<string, Pick<Plugin, 'hooks' | 'draws' | 'buttons'>> = {
           '- Enable GitHub Pages for the repo',
         ],
       },
+    ],
+  },
+  statusline: {
+    hooks: ['settings.read'],
+    draws: 'The status line under the prompt, from a script Claude Code runs',
+    buttons: [],
+    needs: ['bash', 'jq', 'git', 'npx'],
+    setup: [
+      'Run `npx -y @owloops/claude-powerline@latest --help` once, so the first status line does not wait for the download of its context capsule.',
+      "If ~/.claude/settings.json or this project's .claude/settings.json or .claude/settings.local.json sets statusLine, tell me the plugin's status line takes its place while the plugin is enabled, and offer to remove that key.",
+      'Tell me the capsules have rounded ends only with a Nerd Font in my terminal.',
     ],
   },
 }
