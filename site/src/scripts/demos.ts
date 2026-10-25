@@ -5,7 +5,7 @@
 // answer streams in, and the pane's own actions run (Artifact for
 // how-why-teach, New session for handoff). The statusline demo has no band:
 // its status line under the prompt follows the session's branch, changes, PR,
-// usage and context. Each demo loops while on screen, can be paused, and shows
+// effort and context. Each demo loops while on screen, can be paused, and shows
 // its final frame still under reduced motion.
 import type { Button } from '../plugins'
 
@@ -266,7 +266,6 @@ const C = {
   dir: '#87afaf',
   branch: '#d787af',
   ok: '#afaf00',
-  up: '#87af87',
   mod: '#ffaf00',
   bad: '#d75f5f',
   sep: '#6c6c6c',
@@ -279,8 +278,7 @@ interface Status {
   upstream: boolean
   changes: [staged: number, modified: number, untracked: number]
   pr?: { n: number; approved?: boolean }
-  usage: [fiveHour: number, sevenDay: number] // used %
-  context: [tokens: number, left: number]
+  context: [tokens: number, left: number] // left: % of the window
 }
 
 function ink(text: string, color: string, dim = false) {
@@ -297,13 +295,24 @@ function cap(bg: string, ...parts: HTMLElement[]) {
   return c
 }
 
+const level = (used: number) => (used >= 80 ? C.bad : used >= 50 ? C.mod : C.ok)
+
+// `filled` of `total` segments in `color`, the rest dim, as the script's segments().
+function segments(filled: number, total: number, color: string) {
+  const bar = el('span', '')
+  for (let i = 0; i < total; i++) bar.append(i < filled ? ink('━', color) : ink('─', C.sep, true))
+  return bar
+}
+
+// A 10-segment bar filled to `used` %, half a segment and up filling one, as the script's gauge().
+const gauge = (used: number) => segments(Math.floor((used + 5) / 10), 10, level(used))
+
 // Draws the four capsules as the script prints them; one whose text changed flashes.
 function drawStatus(d: Demo, s: Status) {
   const before = [...d.status.children].map((c) => c.textContent)
   const model = el('b', '', 'Opus 5.5')
   model.style.color = C.model
-  const bar = el('span', '')
-  for (let i = 0; i < 5; i++) bar.append(i < s.effort ? ink('━', EFFORT[s.effort - 1]) : ink('─', C.sep, true))
+  const bar = segments(s.effort, 5, EFFORT[s.effort - 1])
 
   const [staged, modified, untracked] = s.changes
   const changes = [
@@ -312,11 +321,6 @@ function drawStatus(d: Demo, s: Status) {
     ...(untracked ? [ink(`?${untracked}`, C.dir, true)] : []),
   ]
   const pr = s.pr ? [el('span', 'pr', `PR #${s.pr.n}`), ...(s.pr.approved ? [ink('✓', C.ok)] : [])] : []
-  const usage = (label: string, pct: number, left: string) => [
-    ink(label, C.dir, true),
-    ink(`${pct}%`, pct >= 80 ? C.bad : pct >= 50 ? C.mod : C.ok),
-    ink(left, C.dir, true),
-  ]
   const [tokens, left] = s.context
 
   d.status.replaceChildren(
@@ -329,8 +333,12 @@ function drawStatus(d: Demo, s: Status) {
       ...(changes.length ? changes : [ink('✓', C.ok)]),
       ...pr,
     ),
-    cap('#504945', ...usage('5h', s.usage[0], '2h41m'), ...usage('7d', s.usage[1], '3d4h')),
-    cap('#458588', el('span', '', `◔ ${tokens.toLocaleString('en-US')} (${left}%)`)),
+    cap(
+      '#504945',
+      el('span', '', `${Math.round(tokens / 1000)}k`),
+      gauge(100 - left),
+      ink(`(${left}%)`, level(100 - left)),
+    ),
   )
   for (const [i, c] of [...d.status.children].entries()) {
     if (before.length && c.textContent !== before[i]) {
@@ -347,8 +355,7 @@ async function statusline(d: Demo) {
     branch: 'main',
     upstream: true,
     changes: [0, 0, 0],
-    usage: [12, 41],
-    context: [18_240, 91],
+    context: [182_400, 81],
   }
   const show = (change: Partial<Status>) => drawStatus(d, (s = { ...s, ...change }))
   show({})
@@ -361,11 +368,11 @@ async function statusline(d: Demo) {
   await wait(d, 1100)
   line(d, '● Write(plugins/statusline/hooks/register.ts)', 'tool')
   line(d, '  └ Wrote 18 lines', 'dim')
-  show({ changes: [0, 0, 1], context: [41_630, 79] })
+  show({ changes: [0, 0, 1], context: [205_100, 79] })
   await wait(d, 1100)
   line(d, '● Edit(README.md)', 'tool')
   line(d, '  └ Added 6 lines', 'dim')
-  show({ changes: [0, 1, 1], usage: [15, 41], context: [52_310, 73] })
+  show({ changes: [0, 1, 1], context: [219_300, 78] })
   await wait(d, 1100)
   line(d, '● Bash(git add . && git commit -m "Add statusline")', 'tool')
   line(d, '  └ 2 files changed', 'dim')
@@ -373,7 +380,7 @@ async function statusline(d: Demo) {
   await wait(d, 1100)
   line(d, '● Bash(git push -u origin feat/statusline && gh pr create --fill)', 'tool')
   line(d, '  └ github.com/luisMDev/claude-code-plugins/pull/7', 'dim')
-  show({ upstream: true, pr: { n: 7 }, usage: [18, 42], context: [64_000, 62] })
+  show({ upstream: true, pr: { n: 7 }, context: [231_800, 76] })
   await wait(d, 400)
   line(d, '✻ Churned for 1m 12s', 'clay')
   await wait(d, 1800)
@@ -382,7 +389,7 @@ async function statusline(d: Demo) {
 
   await prompt(d, '/effort max')
   line(d, '  └ Set effort level to max', 'dim')
-  show({ effort: 5 })
+  show({ effort: 5, context: [244_000, 75] })
   await wait(d, 3200)
 }
 
