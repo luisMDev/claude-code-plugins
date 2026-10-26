@@ -259,8 +259,8 @@ async function handoff(d: Demo) {
   await close(d, foot)
 }
 
-// The 256-colour palette of plugins/statusline/statusline.sh, and its effort
-// bar's colour from low to max.
+// The palette of plugins/statusline/hooks/register.tsx, and its effort bar's
+// colour from low to max.
 const C = {
   model: '#ffaf00',
   dir: '#87afaf',

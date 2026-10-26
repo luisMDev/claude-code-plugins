@@ -10,7 +10,7 @@ LuismDev's Claude Code plugins, published as one marketplace. Site: https://luis
 
 ## Install
 
-The site's **Copy install prompt** button copies a prompt to paste into Claude Code: it adds the marketplace, installs the plugins, checks the tools the status line script runs and offers to install the missing ones.
+The site's **Copy install prompt** button copies a prompt to paste into Claude Code: it adds the marketplace, installs the plugins, checks that `git` is on the PATH and whether `gh` is signed in (for the statusline's PR), and offers to retire a `statusLine` or another usage meter that would show beside the capsules.
 
 At the prompt of a terminal session:
 
@@ -42,7 +42,7 @@ claude plugin test plugins/<plugin>
 
 ## Site
 
-`site/` is the plugins' landing page, an Astro static site. It reads `.claude-plugin/marketplace.json`, each `plugin.json` and each `SKILL.md` at build time; what the manifests do not say (hooks, what each mod draws, the demo's buttons, the commands a plugin's scripts need and the extra steps of its install prompt) is in `site/src/plugins.ts`. `.github/workflows/site.yml` publishes it to GitHub Pages on every push to `main`.
+`site/` is the plugins' landing page, an Astro static site. It reads `.claude-plugin/marketplace.json`, each `plugin.json` and each `SKILL.md` at build time; what the manifests do not say (hooks, what each mod draws, the demo's buttons, the commands a plugin needs on the PATH and the extra steps of its install prompt) is in `site/src/plugins.ts`. `.github/workflows/site.yml` publishes it to GitHub Pages on every push to `main`.
 
 ```
 cd site
