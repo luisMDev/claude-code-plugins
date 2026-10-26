@@ -1,7 +1,6 @@
 {
   "name": "statusline",
-  "version": "0.3.0",
-  "description": "Capsules at the bottom right of the prompt footer: model and effort, where the session works (repo or worktree, branch, ahead/behind, changes, PR), the 5-hour and weekly usage windows in turn, and the context window in thousands of tokens, each with a filling bar.",
-  "author": { "name": "LuismDev" },
-  "types": "./types/index.d.ts"
+  "version": "0.4.0",
+  "description": "A status line of capsules under the prompt: model and effort, where the session works (repo or worktree, branch, ahead/behind, changes, PR), the 5-hour and weekly usage windows in turn, and the context window in thousands of tokens, each with a filling bar.",
+  "author": { "name": "LuismDev" }
 }

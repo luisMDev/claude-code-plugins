@@ -47,7 +47,7 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
     <title>{TITLE} · Claude Code plugins</title>
     <meta
       name="description"
-      content="Claude Code plugins and mods by LuismDev: How, Why and Teach buttons and a Handoff button above the prompt, and capsules at its bottom right."
+      content="Claude Code plugins and mods by LuismDev: How, Why and Teach buttons and a Handoff button above the prompt, and a status line of capsules under it."
     />
     <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}/favicon.svg`} />
     <script is:inline>
@@ -102,8 +102,8 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
         <div class="copy">
           <p class="lead">
             Small plugins around the Claude Code prompt. Buttons above it answer in a side pane from a fork of the
-            session, so the main thread never gets an extra turn; capsules at its bottom right show where you are,
-            the branch and its PR, your usage and the context window.
+            session, so the main thread never gets an extra turn; a status line under it shows where you are, the
+            branch and its PR, your usage and the context window.
           </p>
           <button type="button" class="primary" data-copy={everything} data-toast={copied} data-done="Copied">
             <span>Copy install prompt</span>
@@ -121,8 +121,8 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
         <aside class="rail">
           <h2>plugins<sup>{plugins.length}</sup></h2>
           <p class="muted">
-            Built on mods: small TypeScript hooks that draw their own buttons, panes and capsules in the terminal.
-            Each window plays what the plugin really does.
+            Built on mods: small TypeScript hooks that draw their own buttons and panes in the terminal, or set its
+            status line. Each window plays what the plugin really does.
           </p>
           <div class="actions">
             <a class="link" href={github}>SOURCE↗</a>
@@ -197,7 +197,7 @@ const copied = 'Install prompt copied. Paste it into Claude Code.'
         <div class="copy">
           <p>
             Copy the prompt and paste it into Claude Code: it adds this marketplace, installs every plugin, and checks
-            what the statusline needs. To pick one, use the <span class="accent">install</span> button next to it.
+            the tools the status line script runs. To pick one, use the <span class="accent">install</span> button next to it.
           </p>
           <button type="button" class="primary" data-copy={everything} data-toast={copied} data-done="Copied">
             <span>Copy install prompt</span>
