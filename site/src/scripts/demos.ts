@@ -4,7 +4,7 @@
 // request in the prompt), the side pane opens with its loading line, the
 // answer streams in, and the pane's own actions run (Artifact for
 // how-why-teach, New session for handoff). The statusline demo has no band:
-// its capsules at the bottom right follow the session's branch, changes, PR,
+// its status line under the prompt follows the session's branch, changes, PR,
 // effort, usage and context. Each demo loops while on screen, can be paused,
 // and shows its final frame still under reduced motion.
 import type { Button } from '../plugins'
@@ -259,8 +259,8 @@ async function handoff(d: Demo) {
   await close(d, foot)
 }
 
-// The palette of plugins/statusline/hooks/register.tsx, and its effort bar's
-// colour from low to max.
+// The 256-colour palette of plugins/statusline/statusline.sh, and its effort
+// bar's colour from low to max.
 const C = {
   model: '#ffaf00',
   dir: '#87afaf',
@@ -279,7 +279,7 @@ interface Status {
   changes: [staged: number, modified: number, untracked: number]
   pr?: { n: number; approved?: boolean }
   usage: [fiveHour: number, week: number] // used %
-  turn: 0 | 1 // which usage window the capsule shows, as the mod turns between them
+  turn: 0 | 1 // which usage window the capsule shows, as the script turns between them
   context: [tokens: number, left: number] // left: % of the window
 }
 

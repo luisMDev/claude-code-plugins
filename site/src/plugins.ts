@@ -126,13 +126,12 @@ const EXTRAS: Record<string, Pick<Plugin, 'hooks' | 'draws' | 'buttons' | 'needs
     ],
   },
   statusline: {
-    hooks: ['ui.render', 'session.measure', 'turn.step'],
-    draws: 'Capsules at the bottom right of the prompt footer',
+    hooks: ['settings.read'],
+    draws: 'The status line under the prompt, from a script Claude Code runs',
     buttons: [],
-    needs: ['git'],
+    needs: ['bash', 'jq', 'git'],
     setup: [
-      'Check whether gh is installed and signed in (`gh auth status`): with it the line shows the branch\'s open PR, without it the PR is left out. Do not install it unless I ask.',
-      "If ~/.claude/settings.json or this project's .claude/settings.json or .claude/settings.local.json sets statusLine, tell me the plugin draws its own line at the bottom right, and offer to remove that key so the footer does not show both.",
+      "If ~/.claude/settings.json or this project's .claude/settings.json or .claude/settings.local.json sets statusLine, tell me the plugin's status line takes its place while the plugin is enabled, and offer to remove that key.",
       'If another enabled plugin already shows the 5-hour and weekly usage at the bottom right (sub-meter, for one), tell me this plugin shows it too, and offer to disable that one.',
       'Tell me the capsules have rounded ends only with a Nerd Font in my terminal.',
     ],
