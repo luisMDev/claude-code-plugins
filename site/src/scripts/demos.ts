@@ -4,9 +4,9 @@
 // request in the prompt), the side pane opens with its loading line, the
 // answer streams in, and the pane's own actions run (Artifact for
 // how-why-teach, New session for handoff). The statusline demo has no band:
-// its status line under the prompt follows the session's branch, changes, PR,
-// effort and context. Each demo loops while on screen, can be paused, and shows
-// its final frame still under reduced motion.
+// its capsules at the bottom right follow the session's branch, changes, PR,
+// effort, usage and context. Each demo loops while on screen, can be paused,
+// and shows its final frame still under reduced motion.
 import type { Button } from '../plugins'
 
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -278,6 +278,8 @@ interface Status {
   upstream: boolean
   changes: [staged: number, modified: number, untracked: number]
   pr?: { n: number; approved?: boolean }
+  usage: [fiveHour: number, week: number] // used %
+  turn: 0 | 1 // which usage window the capsule shows, as the mod turns between them
   context: [tokens: number, left: number] // left: % of the window
 }
 
@@ -321,6 +323,7 @@ function drawStatus(d: Demo, s: Status) {
     ...(untracked ? [ink(`?${untracked}`, C.dir, true)] : []),
   ]
   const pr = s.pr ? [el('span', 'pr', `PR #${s.pr.n}`), ...(s.pr.approved ? [ink('✓', C.ok)] : [])] : []
+  const [label, used, resets] = s.turn === 0 ? ['5h', s.usage[0], '2h 41m'] : ['week', s.usage[1], '3d 4h']
   const [tokens, left] = s.context
 
   d.status.replaceChildren(
@@ -333,8 +336,9 @@ function drawStatus(d: Demo, s: Status) {
       ...(changes.length ? changes : [ink('✓', C.ok)]),
       ...pr,
     ),
+    cap('#504945', ink(label, C.dir, true), gauge(used), ink(`${used}%`, level(used)), ink(`· ${resets}`, C.dir, true)),
     cap(
-      '#504945',
+      '#3c3836',
       el('span', '', `${Math.round(tokens / 1000)}k`),
       gauge(100 - left),
       ink(`(${left}%)`, level(100 - left)),
@@ -355,6 +359,8 @@ async function statusline(d: Demo) {
     branch: 'main',
     upstream: true,
     changes: [0, 0, 0],
+    usage: [12, 41],
+    turn: 0,
     context: [182_400, 81],
   }
   const show = (change: Partial<Status>) => drawStatus(d, (s = { ...s, ...change }))
@@ -368,29 +374,31 @@ async function statusline(d: Demo) {
   await wait(d, 1100)
   line(d, '● Write(plugins/statusline/hooks/register.ts)', 'tool')
   line(d, '  └ Wrote 18 lines', 'dim')
-  show({ changes: [0, 0, 1], context: [205_100, 79] })
+  show({ changes: [0, 0, 1], turn: 1, context: [205_100, 79] })
   await wait(d, 1100)
   line(d, '● Edit(README.md)', 'tool')
   line(d, '  └ Added 6 lines', 'dim')
-  show({ changes: [0, 1, 1], context: [219_300, 78] })
+  show({ changes: [0, 1, 1], usage: [15, 41], context: [219_300, 78] })
   await wait(d, 1100)
   line(d, '● Bash(git add . && git commit -m "Add statusline")', 'tool')
   line(d, '  └ 2 files changed', 'dim')
-  show({ changes: [0, 0, 0] })
+  show({ changes: [0, 0, 0], turn: 0 })
   await wait(d, 1100)
   line(d, '● Bash(git push -u origin feat/statusline && gh pr create --fill)', 'tool')
   line(d, '  └ github.com/luisMDev/claude-code-plugins/pull/7', 'dim')
-  show({ upstream: true, pr: { n: 7 }, context: [231_800, 76] })
+  show({ upstream: true, pr: { n: 7 }, usage: [18, 42], context: [231_800, 76] })
   await wait(d, 400)
   line(d, '✻ Churned for 1m 12s', 'clay')
   await wait(d, 1800)
-  show({ pr: { n: 7, approved: true } })
+  show({ pr: { n: 7, approved: true }, turn: 1 })
   await wait(d, 1400)
 
   await prompt(d, '/effort max')
   line(d, '  └ Set effort level to max', 'dim')
   show({ effort: 5, context: [244_000, 75] })
-  await wait(d, 3200)
+  await wait(d, 1600)
+  show({ turn: 0 })
+  await wait(d, 1600)
 }
 
 const SCRIPTS: Record<string, (d: Demo, round: number) => Promise<void>> = {

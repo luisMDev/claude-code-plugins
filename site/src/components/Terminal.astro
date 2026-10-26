@@ -1,7 +1,8 @@
 ---
 // A Claude Code window that plays a plugin's demo (scripts/demos.ts): the
-// session on the left, the band above the prompt, the status line under it,
-// and the plugin's pane sliding in from the right, driven by a pointer.
+// session on the left, the band above the prompt, the capsules at the bottom
+// right of the footer, and the plugin's pane sliding in from the right,
+// driven by a pointer.
 import type { Button } from '../plugins'
 
 interface Props {
@@ -183,9 +184,11 @@ const { id, buttons } = Astro.props
       opacity: 0;
     }
   }
+  /* The statusline mod draws at the bottom right of the footer. */
   .status {
     display: flex;
     flex-wrap: wrap;
+    justify-content: flex-end;
     gap: 4px 6px;
     margin-top: 6px;
   }

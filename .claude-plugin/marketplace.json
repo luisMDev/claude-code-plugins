@@ -18,7 +18,7 @@
     {
       "name": "statusline",
       "source": "./plugins/statusline",
-      "description": "A status line of capsules under the prompt: model and effort, repo, branch, changes and PR, usage windows, context."
+      "description": "Capsules at the bottom right of the prompt footer: model and effort, repo, branch, changes and PR, usage windows, context."
     }
   ]
 }
