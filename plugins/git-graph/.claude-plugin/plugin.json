@@ -1,0 +1,7 @@
+{
+  "name": "git-graph",
+  "version": "0.1.0",
+  "description": "A Git Graph pane: the commit graph of every branch, local and remote, with the branches, their upstreams and how far ahead or behind they are. Opened from a Graph button above the prompt or /git-graph.",
+  "author": { "name": "LuismDev" },
+  "types": "./types/index.d.ts"
+}

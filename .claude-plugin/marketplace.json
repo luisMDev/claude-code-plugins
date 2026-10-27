@@ -19,6 +19,11 @@
       "name": "statusline",
       "source": "./plugins/statusline",
       "description": "A status line of capsules under the prompt: model and effort, repo, branch, changes and PR, usage windows, context."
+    },
+    {
+      "name": "git-graph",
+      "source": "./plugins/git-graph",
+      "description": "A Git Graph pane: the commit graph of every branch, local and remote, with the branches, their upstreams and how far ahead or behind they are."
     }
   ]
 }

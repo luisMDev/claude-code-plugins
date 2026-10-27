@@ -136,6 +136,25 @@ const EXTRAS: Record<string, Pick<Plugin, 'hooks' | 'draws' | 'buttons' | 'needs
       'Tell me the capsules have rounded ends only with a Nerd Font in my terminal.',
     ],
   },
+  'git-graph': {
+    hooks: ['ui.render', 'command.run', 'turn.complete'],
+    draws: 'A button above the prompt and a pane beside the transcript',
+    buttons: [
+      {
+        label: 'Graph',
+        color: '#83a598',
+        subtitle: '⎇ main · 2 local · 3 remote',
+        answer: [
+          '●   c3c3c3c HEAD → main Merge feat/x',
+          '|\\',
+          '| ● b2b2b2b feat/x origin/feat/x Add x',
+          '|/',
+          '● a1a1a1a origin/main First commit',
+        ],
+      },
+    ],
+    needs: ['git'],
+  },
 }
 
 function frontmatter(md: string, key: string): string {

@@ -5,7 +5,8 @@
 // answer streams in, and the pane's own actions run (Artifact for
 // how-why-teach, New session for handoff). The statusline demo has no band:
 // its status line under the prompt follows the session's branch, changes, PR,
-// effort, usage and context. Each demo loops while on screen, can be paused,
+// effort, usage and context. The git-graph demo opens its pane on the graph
+// and copies a branch's name. Each demo loops while on screen, can be paused,
 // and shows its final frame still under reduced motion.
 import type { Button } from '../plugins'
 
@@ -401,10 +402,73 @@ async function statusline(d: Demo) {
   await wait(d, 1600)
 }
 
+// The palette of plugins/git-graph/hooks/svg.ts: lanes, then each kind of name.
+const LANE = ['#83a598', '#d3869b', '#fabd2f']
+const REF = { head: '#b8bb26', local: '#d3869b', remote: '#83a598', tag: '#fabd2f' }
+
+async function gitGraph(d: Demo) {
+  const [pill] = reset(d, d.buttons)
+  await prompt(d, 'merge feat/x into main')
+  await wait(d, 300)
+  line(d, '● Bash(git merge feat/x)', 'tool')
+  line(d, "  └ Merge made by the 'ort' strategy.", 'dim')
+  await wait(d, 400)
+  line(d, '✻ Churned for 12s', 'clay')
+  await wait(d, 500)
+  d.band.classList.add('on')
+  await wait(d, 700)
+
+  await press(d, pill)
+  const b = d.buttons[0]
+  d.pane.replaceChildren()
+  const head = el('header', '')
+  head.append(capsule(b.label, b.color), el('span', 'dim', b.subtitle), el('span', 'dim meta', 'read at 14:02:11'))
+  const body = el('div', 'body')
+  const foot = el('footer', '')
+  const actions = ['↻ Refresh', 'All branches', '▸ Branches', '✕ Close'].map((t) => capsule(t))
+  foot.append(...actions)
+  d.pane.append(head, el('hr', ''), body, el('hr', ''), foot)
+  d.pane.classList.add('open')
+
+  // Each row: its lanes, coloured, then the names (pressable), subject and hash.
+  type Part = [text: string, color?: string, isName?: boolean]
+  const rows: Part[][] = [
+    [['●  ', LANE[0]], ['main', REF.head, true], [' '], ['v1.0', REF.tag, true], [' Merge feat/x '], ['c3c3c3c', LANE[2]]],
+    [['│╲ ', LANE[1]]],
+    [['│ ●', LANE[1]], [' '], ['origin/feat/x', REF.remote, true], [' Add x '], ['b2b2b2b', LANE[2]]],
+    [['│╱ ', LANE[1]]],
+    [['●  ', LANE[0]], ['origin/main', REF.remote, true], [' First commit '], ['a1a1a1a', LANE[2]]],
+  ]
+  const names: HTMLElement[] = []
+  for (const parts of rows) {
+    const p = el('p', '')
+    for (const [text, color, isName] of parts) {
+      const part = isName ? capsule(text, color) : color ? ink(text, color) : document.createTextNode(text)
+      if (isName) names.push(part as HTMLElement)
+      p.append(part)
+    }
+    body.append(p)
+    await wait(d, reduced ? 0 : 160)
+  }
+  await wait(d, 1000)
+
+  // A name pressed is copied.
+  const copied = names[2]
+  await press(d, copied)
+  copied.textContent = `${copied.textContent} ✓`
+  const status = el('p', 'status', '⧉ Copied origin/feat/x')
+  status.style.color = b.color
+  body.append(status)
+  await wait(d, 1800)
+  if (reduced) return
+  await close(d, foot)
+}
+
 const SCRIPTS: Record<string, (d: Demo, round: number) => Promise<void>> = {
   'how-why-teach': howWhyTeach,
   handoff,
   statusline,
+  'git-graph': gitGraph,
 }
 
 export function start(root: HTMLElement) {
