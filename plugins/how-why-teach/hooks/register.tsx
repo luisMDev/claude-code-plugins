@@ -12,8 +12,9 @@ const BUTTONS = [
 ] as const
 
 // The status line's capsule: rounded caps (Nerd Font) around a filled body.
-// Only the terminal gets the caps: other surfaces have no Nerd Font and draw
-// their own buttons, so they get the body alone.
+// Only the terminal draws it: other surfaces have no Nerd Font and draw their
+// own buttons, where a filled body would be a second button inside the first,
+// so there the label is drawn alone, in its color.
 const PILL_BG = '#504945'
 const PILL_FG = '#ebdbb2'
 
@@ -237,12 +238,19 @@ const snippet = (text: string) => {
 const count = (n: number) => (n < 1000 ? `${n}` : `${(n / 1000).toFixed(1)}k`)
 
 function capsule(Text: ElementConstructor<TextProps>, label: string, color: string, caps: boolean) {
+  if (!caps) {
+    return [
+      <Text color={color} weight="semibold">
+        {label}
+      </Text>,
+    ]
+  }
   const body = (
-    <Text backgroundColor={PILL_BG} color={color} bold>
+    <Text backgroundColor={PILL_BG} color={color} weight="semibold">
       {` ${label} `}
     </Text>
   )
-  return caps ? [<Text color={PILL_BG}>{''}</Text>, body, <Text color={PILL_BG}>{''}</Text>] : [body]
+  return [<Text color={PILL_BG}>{''}</Text>, body, <Text color={PILL_BG}>{''}</Text>]
 }
 
 export const register: Register = on => {
@@ -281,9 +289,10 @@ export const register: Register = on => {
     return joinBand(
       Box,
       Text,
-      <Box flexShrink={0}>
+      // Native buttons sit apart by the row's gap; the terminal's capsules by a dot.
+      <Box flexShrink={0} columnGap={caps ? 0 : 1} alignItems="center">
         {BUTTONS.flatMap((b, i) => [
-          ...(i > 0 ? [<Text key={`sep-${b.key}`} dimColor> · </Text>] : []),
+          ...(i > 0 && caps ? [<Text key={`sep-${b.key}`} dimColor> · </Text>] : []),
           <Button key={b.key} plain onPress={() => press($, b.key, b.label)}>
             {capsule(Text, b.label, b.color, caps)}
           </Button>,
@@ -304,7 +313,8 @@ export const register: Register = on => {
     const caps = e.surface === 'terminal'
     const shown = await read($, answer)
     const mode = BUTTONS.find(b => b.key === shown?.mode)
-    const rule = <Text dimColor>{'─'.repeat(Math.max(8, e.props.bodyColumns - 4))}</Text>
+    // bodyColumns counts monospace cells: drawn in that face, the rule fits on every surface.
+    const rule = <Text dimColor mono>{'─'.repeat(Math.max(8, e.props.bodyColumns - 4))}</Text>
 
     if (shown === null || mode === undefined) {
       return (

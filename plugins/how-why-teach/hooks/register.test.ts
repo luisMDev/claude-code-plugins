@@ -197,7 +197,7 @@ test('capsules have Nerd Font caps on the terminal and only their body on deskto
     for (const site of [band, pane]) {
       const texts = (await site.findAll({ type: 'Text' })).map(t => t.text ?? '')
       expect(texts.some(t => CAPS.test(t))).toBe(surface === 'terminal')
-      expect(texts).toContain(' How ')
+      expect(texts).toContain(surface === 'terminal' ? ' How ' : 'How')
     }
   }
 })
